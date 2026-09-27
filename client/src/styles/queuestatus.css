@@ -1,0 +1,88 @@
+.queue-status-page {
+  display: flex;
+  justify-content: center;
+  padding: 3rem 2rem;
+}
+
+.status-card {
+  width: 100%;
+  max-width: 440px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
+  border-radius: 16px;
+  padding: 2.5rem 2rem;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  text-align: center;
+}
+
+.status-card h1 {
+  font-size: 1.4rem;
+  margin-bottom: 1.75rem;
+}
+
+.status-position-circle {
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  background: var(--navy-100);
+  color: var(--navy-800);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 1.5rem;
+}
+
+.status-position-circle .position-number {
+  font-size: 1.75rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.status-position-circle .position-label {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  margin-top: 0.15rem;
+}
+
+.status-badge {
+  display: inline-block;
+  padding: 0.35rem 1rem;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-transform: capitalize;
+  margin-bottom: 1.5rem;
+}
+
+.status-waiting { background: color-mix(in srgb, var(--status-waiting) 20%, white); color: var(--status-waiting); }
+.status-almost_ready { background: color-mix(in srgb, var(--status-ready) 20%, white); color: var(--status-ready); }
+.status-served { background: color-mix(in srgb, var(--status-served) 20%, white); color: var(--status-served); }
+
+.status-progress-track {
+  display: flex;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
+
+.status-progress-step {
+  flex: 1;
+  height: 6px;
+  background: var(--border-light);
+  border-radius: 3px;
+  margin: 0 3px;
+}
+
+.status-progress-step.active {
+  background: var(--navy-500);
+}
+
+.wait-time {
+  font-size: 1rem;
+  color: var(--text-muted);
+}
+
+.wait-time strong {
+  color: var(--text-primary);
+  font-size: 1.15rem;
+}
