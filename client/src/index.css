@@ -1,0 +1,108 @@
+:root {
+  --navy-950: #0a1330;
+  --navy-900: #14204a;
+  --navy-800: #1e2f66;
+  --navy-700: #2b4080;
+  --navy-500: #3d5aa8;
+  --navy-100: #dde6f7;
+
+  --bg-page: #f7f9fc;
+  --bg-card: #ffffff;
+  --border-light: #e3e8f0;
+  --text-primary: #1a2340;
+  --text-muted: #6b7690;
+
+  --status-waiting: #e8a33d;
+  --status-ready: #2fa86b;
+  --status-served: #8992a8;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: system-ui, sans-serif;
+  background: var(--bg-page);
+  color: var(--text-primary);
+}
+
+.navbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 2rem;
+  background: var(--navy-950);
+  color: white;
+}
+
+.navbar-brand {
+  font-weight: 700;
+  font-size: 1.25rem;
+  color: white;
+  text-decoration: none;
+}
+
+.navbar-links {
+  display: flex;
+  gap: 1.5rem;
+  align-items: center;
+}
+
+.navbar-link {
+  color: white;
+  text-decoration: none;
+  background: none;
+  border: none;
+  font-size: 1rem;
+  cursor: pointer;
+}
+
+.navbar-dropdown {
+  position: relative;
+}
+
+.navbar-dropdown-menu {
+  position: absolute;
+  top: 100%;
+  right: 0;              /* was left: 0 */
+  left: auto;
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
+  border-radius: 8px;
+  min-width: 200px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  z-index: 10;
+  overflow: hidden;       /* keeps rounded corners clean on hover bg */
+  font-family: inherit;   /* fixes font mismatch if browser default was leaking in */
+}
+
+.navbar-dropdown-item {
+  display: block;
+  padding: 0.75rem 1.25rem;
+  color: var(--text-primary);
+  text-decoration: none;
+  font-size: 0.95rem;
+  white-space: nowrap;
+}
+
+.navbar-dropdown-item:hover {
+  background: var(--navy-100);
+}
+
+.home-page {
+  padding: 3rem 2rem;
+  text-align: center;
+}
+
+.cta-button {
+  display: inline-block;
+  margin-top: 1.5rem;
+  padding: 0.75rem 1.5rem;
+  background: var(--navy-500);
+  color: white;
+  text-decoration: none;
+  border-radius: 6px;
+}
