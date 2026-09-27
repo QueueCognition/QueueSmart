@@ -117,7 +117,7 @@ function JoinQueue() {
               maxLength={100}
               value={fullName}
               onChange={(e) => setFullName(e.target.value)}
-              placeholder="Jane Doe"
+              placeholder="Jamie Win"
             />
             {errors.fullName && <span className="field-error">{errors.fullName}</span>}
           </div>
@@ -129,7 +129,7 @@ function JoinQueue() {
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="jane@example.com"
+              placeholder="jamie@example.com"
             />
             {errors.email && <span className="field-error">{errors.email}</span>}
           </div>

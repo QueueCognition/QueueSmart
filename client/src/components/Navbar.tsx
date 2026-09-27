@@ -1,8 +1,20 @@
 import { useState } from 'react'
 import { Link, NavLink } from 'react-router-dom'
+import { useAuth } from '../context/AuthContext'
 
 function Navbar() {
   const [scheduleOpen, setScheduleOpen] = useState(false)
+  const { user, isAuthenticated, isInitializing, logout } = useAuth()
+
+  const authControl = isAuthenticated ? (
+    <button type="button" className="navbar-link" onClick={logout}>
+      Sign out{user ? ` (${user.firstName} ${user.lastName})` : ''}
+    </button>
+  ) : (
+    <NavLink to="/login" className="navbar-link">
+      Sign in
+    </NavLink>
+  )
 
   return (
     <nav className="navbar">
@@ -30,6 +42,8 @@ function Navbar() {
             </div>
           )}
         </div>
+
+        {isInitializing ? null : authControl}
       </div>
     </nav>
   )

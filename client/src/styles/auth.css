@@ -1,0 +1,236 @@
+.auth {
+  display: flex;
+  justify-content: center;
+  padding: 3.5rem 2rem;
+}
+
+.auth__card {
+  width: 100%;
+  max-width: 400px;
+  height: fit-content;
+  padding: 2.25rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(10, 19, 48, 0.08);
+}
+
+.auth__card--wide {
+  max-width: 440px;
+}
+
+.auth__header {
+  margin-bottom: 1.5rem;
+}
+
+.auth__title {
+  font-size: 1.6rem;
+  margin-bottom: 0.35rem;
+}
+
+.auth__subtitle {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.auth__alert {
+  margin-bottom: 1.25rem;
+  padding: 0.65rem 0.85rem;
+  background: #fdecea;
+  border: 1px solid #f5c2bd;
+  border-radius: 8px;
+  color: #a5281b;
+  font-size: 0.875rem;
+}
+
+.auth__alert--warning {
+  background: #fff6e8;
+  border-color: #f3d9ac;
+  color: #8a5a12;
+}
+
+.auth__alert--success {
+  background: #e7f6ee;
+  border-color: #a7dcc0;
+  color: #1f7d4d;
+}
+
+.auth__form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+}
+
+.auth__row {
+  display: flex;
+  gap: 1rem;
+}
+
+.auth__row .auth__field {
+  flex: 1;
+  min-width: 0;
+}
+
+.auth__field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.auth__label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.auth__input {
+  width: 100%;
+  padding: 0.65rem 0.8rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
+  border-radius: 6px;
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 0.95rem;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.auth__input:focus {
+  outline: none;
+  border-color: var(--navy-500);
+  box-shadow: 0 0 0 3px rgba(61, 90, 168, 0.18);
+}
+
+.auth__input--invalid {
+  border-color: #c0392b;
+}
+
+.auth__input--invalid:focus {
+  border-color: #c0392b;
+  box-shadow: 0 0 0 3px rgba(192, 57, 43, 0.18);
+}
+
+.auth__error {
+  color: #c0392b;
+  font-size: 0.8rem;
+}
+
+.auth__actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.auth__checkbox {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--text-muted);
+  font-size: 0.875rem;
+  font-weight: 400;
+  cursor: pointer;
+}
+
+.auth__checkbox input[type='checkbox'] {
+  width: 1rem;
+  height: 1rem;
+  margin: 0;
+  padding: 0;
+  accent-color: var(--navy-500);
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+.auth__link {
+  padding: 0;
+  background: none;
+  border: none;
+  color: var(--navy-500);
+  font-family: inherit;
+  font-size: 0.875rem;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.auth__link:hover {
+  text-decoration: underline;
+}
+
+.auth__submit {
+  padding: 0.75rem;
+  background: var(--navy-500);
+  border: none;
+  border-radius: 6px;
+  color: #fff;
+  font-family: inherit;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.auth__submit:hover:not(:disabled) {
+  background: var(--navy-700);
+}
+
+.auth__submit:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.auth__hint {
+  margin-top: 1.25rem;
+  padding: 0.6rem 0.75rem;
+  background: var(--navy-100);
+  border-radius: 8px;
+  color: var(--navy-800);
+  font-size: 0.8rem;
+  text-align: center;
+}
+
+.auth__hint strong {
+  font-weight: 600;
+}
+
+.auth__footer {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.55rem;
+  margin-top: 1.25rem;
+  color: var(--text-muted);
+  font-size: 0.875rem;
+  text-align: center;
+}
+
+.auth__footer-button {
+  padding: 0.7rem 1rem;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  font-family: inherit;
+  font-size: 0.95rem;
+  font-weight: 600;
+  text-align: center;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.auth__footer-button--primary {
+  border-color: var(--navy-500);
+  color: var(--navy-500);
+}
+
+.auth__footer-button--primary:hover {
+  background: var(--navy-100);
+}
+
+.auth__footer-button--secondary {
+  border-color: var(--status-ready);
+  color: #1f7d4d;
+}
+
+.auth__footer-button--secondary:hover {
+  background: #e7f6ee;
+}
