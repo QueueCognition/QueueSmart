@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import QueueManagement from './pages/QueueManagement'
 import { AuthProvider } from './context/AuthContext'
 import { NotificationProvider } from './context/NotificationContext'
 import Navbar from './components/Navbar'
@@ -25,6 +26,7 @@ function App() {
             <Route path="/schedule/queue-status" element={<QueueStatus />} />
             <Route path="*" element={<Navigate to="/" replace />} />
             <Route path="/admin/services" element={<ServiceManagement />} />
+            <Route path="/admin/queues" element={<QueueManagement />} />
           </Routes>
         </AuthProvider>
       </BrowserRouter>
