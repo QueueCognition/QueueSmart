@@ -8,6 +8,9 @@ import Register from './pages/Register'
 import ForgotPassword from './pages/ForgotPassword'
 import JoinQueue from './pages/JoinQueue'
 import QueueStatus from './pages/QueueStatus'
+import Dashboard from './pages/Dashboard'
+import Calendar from './pages/Calendar';
+import ProtectedRoute from './components/ProtectedRoute';
 
 function App() {
   return (
@@ -22,6 +25,14 @@ function App() {
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/schedule/join-queue" element={<JoinQueue />} />
             <Route path="/schedule/queue-status" element={<QueueStatus />} />
+            <Route path="/dashboard" element={
+                                        <ProtectedRoute>
+                                          <Dashboard />
+                                        </ProtectedRoute>} />
+            <Route path="/calendar" element={
+                                        <ProtectedRoute>
+                                          <Calendar />
+                                        </ProtectedRoute>} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </AuthProvider>

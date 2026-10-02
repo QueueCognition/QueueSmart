@@ -22,6 +22,18 @@ function Navbar() {
 
       <div className="navbar-links">
         <NavLink to="/" end className="navbar-link">Home</NavLink>
+      
+        {isAuthenticated && (
+          <NavLink to="/dashboard" className="navbar-link">
+            Dashboard
+          </NavLink>
+        )}
+
+        {isAuthenticated && (
+          <NavLink to="/calendar" className="navbar-link">
+            Calendar
+          </NavLink>
+        )}
 
         <div
           className="navbar-dropdown"
