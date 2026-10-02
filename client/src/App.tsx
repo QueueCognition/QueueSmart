@@ -14,6 +14,8 @@ import Calendar from "./pages/Calendar";
 import AdminDashboard from "./pages/AdminDashboard";
 import ProtectedRoute from "./components/ProtectedRoute";
 import NotificationTester from "./components/NotificationTester";
+import QueueManagement from "./pages/QueueManagement";
+import ServiceManagement from "./pages/ServiceManagement";
 
 function App() {
   return (
@@ -25,13 +27,16 @@ function App() {
             <NotificationBell />
           </div>
           <NotificationTester />
+
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
+
             <Route path="/schedule/join-queue" element={<JoinQueue />} />
             <Route path="/schedule/queue-status" element={<QueueStatus />} />
+
             <Route
               path="/dashboard"
               element={
@@ -40,6 +45,7 @@ function App() {
                 </ProtectedRoute>
               }
             />
+
             <Route
               path="/calendar"
               element={
@@ -48,6 +54,7 @@ function App() {
                 </ProtectedRoute>
               }
             />
+
             <Route
               path="/admin"
               element={
@@ -56,6 +63,7 @@ function App() {
                 </ProtectedRoute>
               }
             />
+
             <Route
               path="/admin/dashboard"
               element={
@@ -64,6 +72,7 @@ function App() {
                 </ProtectedRoute>
               }
             />
+
             <Route
               path="/services"
               element={
@@ -72,6 +81,11 @@ function App() {
                 </ProtectedRoute>
               }
             />
+
+            {/* Darshan's A2 admin screens */}
+            <Route path="/admin/services" element={<ServiceManagement />} />
+            <Route path="/admin/queues" element={<QueueManagement />} />
+
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </AuthProvider>
