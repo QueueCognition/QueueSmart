@@ -13,6 +13,11 @@ export const DEMO_CREDENTIALS = {
   password: 'password123',
 } as const;
 
+export const ADMIN_CREDENTIALS = {
+  email: 'admin@queuesmart.dev',
+  password: 'password123',
+} as const;
+
 const PASSWORD_RESET_COOLDOWN_SECONDS = 60;
 const ACCOUNTS_KEY = 'queuesmart.mock.accounts';
 const RESET_TIMES_KEY = 'queuesmart.mock.reset-times';
@@ -20,21 +25,34 @@ const RESET_TIMES_KEY = 'queuesmart.mock.reset-times';
 export async function mockLogin({ email, password }: LoginCredentials): Promise<AuthSession> {
   const [boundIp] = await Promise.all([getClientIp(), delay(600)]);
 
+  const normalizedEmail = email.trim().toLowerCase();
   const matchesDemoAccount =
-    email.trim().toLowerCase() === DEMO_CREDENTIALS.email &&
+    normalizedEmail === DEMO_CREDENTIALS.email &&
     password === DEMO_CREDENTIALS.password;
 
-  if (!matchesDemoAccount) {
+  const matchesAdminAccount =
+    normalizedEmail === ADMIN_CREDENTIALS.email &&
+    password === ADMIN_CREDENTIALS.password;
+
+  if (!matchesDemoAccount && !matchesAdminAccount) {
     throw new AuthError('Incorrect email or password', 401);
   }
 
-  const user: User = {
-    id: 'u_demo',
-    firstName: 'Demo',
-    lastName: 'User',
-    email: email.trim().toLowerCase(),
-    role: 'user',
-  };
+  const user: User = matchesAdminAccount
+    ? {
+        id: 'u_admin',
+        firstName: 'Admin',
+        lastName: 'Manager',
+        email: normalizedEmail,
+        role: 'admin',
+      }
+    : {
+        id: 'u_demo',
+        firstName: 'Demo',
+        lastName: 'User',
+        email: normalizedEmail,
+        role: 'user',
+      };
 
   return createSession(user, boundIp);
 }

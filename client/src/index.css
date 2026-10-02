@@ -30,6 +30,7 @@ body {
 }
 
 .navbar {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -43,6 +44,9 @@ body {
   font-size: 1.25rem;
   color: white;
   text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  line-height: 1.5;
 }
 
 .navbar-links {
@@ -56,27 +60,38 @@ body {
   text-decoration: none;
   background: none;
   border: none;
+  font-family: inherit;
   font-size: 1rem;
+  line-height: 1.5;
   cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0;
+  vertical-align: middle;
 }
 
 .navbar-dropdown {
   position: relative;
+  display: inline-flex;
+  align-items: center;
+  padding-bottom: 0.5rem;
+  margin-bottom: -0.5rem;
 }
 
 .navbar-dropdown-menu {
   position: absolute;
   top: 100%;
-  right: 0;              /* was left: 0 */
-  left: auto;
+  left: 50%;
+  right: auto;
+  transform: translateX(-50%);
   background: var(--bg-card);
   border: 1px solid var(--border-light);
   border-radius: 8px;
   min-width: 200px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
-  z-index: 10;
-  overflow: hidden;       /* keeps rounded corners clean on hover bg */
-  font-family: inherit;   /* fixes font mismatch if browser default was leaking in */
+  z-index: 100;
+  overflow: hidden;
+  font-family: inherit;
 }
 
 .navbar-dropdown-item {
@@ -86,6 +101,16 @@ body {
   text-decoration: none;
   font-size: 0.95rem;
   white-space: nowrap;
+}
+
+.navbar-dropdown-button {
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  border-top: 1px solid var(--border-light);
+  cursor: pointer;
+  font-family: inherit;
 }
 
 .navbar-dropdown-item:hover {

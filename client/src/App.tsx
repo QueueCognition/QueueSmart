@@ -10,6 +10,7 @@ import JoinQueue from './pages/JoinQueue'
 import QueueStatus from './pages/QueueStatus'
 import Dashboard from './pages/Dashboard'
 import Calendar from './pages/Calendar';
+import AdminDashboard from './pages/AdminDashboard';
 import ProtectedRoute from './components/ProtectedRoute';
 
 function App() {
@@ -32,6 +33,18 @@ function App() {
             <Route path="/calendar" element={
                                         <ProtectedRoute>
                                           <Calendar />
+                                        </ProtectedRoute>} />
+            <Route path="/admin" element={
+                                        <ProtectedRoute minRole="staff">
+                                          <AdminDashboard />
+                                        </ProtectedRoute>} />
+            <Route path="/admin/dashboard" element={
+                                        <ProtectedRoute minRole="staff">
+                                          <AdminDashboard />
+                                        </ProtectedRoute>} />
+            <Route path="/services" element={
+                                        <ProtectedRoute minRole="staff">
+                                          <AdminDashboard />
                                         </ProtectedRoute>} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>

@@ -1,20 +1,12 @@
 import { useState } from 'react'
 import { Link, NavLink } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import { isStaff } from '../utils/roleUtils'
 
 function Navbar() {
   const [scheduleOpen, setScheduleOpen] = useState(false)
+  const [managementOpen, setManagementOpen] = useState(false)
   const { user, isAuthenticated, isInitializing, logout } = useAuth()
-
-  const authControl = isAuthenticated ? (
-    <button type="button" className="navbar-link" onClick={logout}>
-      Sign out{user ? ` (${user.firstName} ${user.lastName})` : ''}
-    </button>
-  ) : (
-    <NavLink to="/login" className="navbar-link">
-      Sign in
-    </NavLink>
-  )
 
   return (
     <nav className="navbar">
@@ -40,7 +32,11 @@ function Navbar() {
           onMouseEnter={() => setScheduleOpen(true)}
           onMouseLeave={() => setScheduleOpen(false)}
         >
-          <button className="navbar-link navbar-dropdown-trigger">
+          <button
+            type="button"
+            className="navbar-link navbar-dropdown-trigger"
+            onClick={() => setScheduleOpen((prev) => !prev)}
+          >
             Schedule ▾
           </button>
           {scheduleOpen && (
@@ -55,7 +51,52 @@ function Navbar() {
           )}
         </div>
 
-        {isInitializing ? null : authControl}
+        {isAuthenticated ? (
+          isStaff(user) ? (
+            <div
+              className="navbar-dropdown"
+              onMouseEnter={() => setManagementOpen(true)}
+              onMouseLeave={() => setManagementOpen(false)}
+            >
+              <button
+                type="button"
+                className="navbar-link navbar-dropdown-trigger"
+                onClick={() => setManagementOpen((prev) => !prev)}
+              >
+                Management ▾
+              </button>
+              {managementOpen && (
+                <div className="navbar-dropdown-menu">
+                  <Link
+                    to="/admin"
+                    className="navbar-dropdown-item"
+                    onClick={() => setManagementOpen(false)}
+                  >
+                    Admin Dashboard
+                  </Link>
+                  <button
+                    type="button"
+                    className="navbar-dropdown-item navbar-dropdown-button"
+                    onClick={() => {
+                      setManagementOpen(false)
+                      logout()
+                    }}
+                  >
+                    Sign out{user ? ` (${user.firstName} ${user.lastName})` : ''}
+                  </button>
+                </div>
+              )}
+            </div>
+          ) : (
+            <button type="button" className="navbar-link" onClick={logout}>
+              Sign out{user ? ` (${user.firstName} ${user.lastName})` : ''}
+            </button>
+          )
+        ) : isInitializing ? null : (
+          <NavLink to="/login" className="navbar-link">
+            Sign in
+          </NavLink>
+        )}
       </div>
     </nav>
   )
