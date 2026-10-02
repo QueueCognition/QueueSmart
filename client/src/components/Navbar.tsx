@@ -15,10 +15,6 @@ function Navbar() {
       </Link>
 
       <div className="navbar-links">
-        <NavLink to="/" end className="navbar-link">
-          Home
-        </NavLink>
-
         {isAuthenticated && (
           <NavLink to="/dashboard" className="navbar-link">
             Dashboard
