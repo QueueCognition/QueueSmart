@@ -5,14 +5,50 @@ interface NotificationContextValue {
   notifications: Notification[];
   push: (n: Omit<Notification, "id" | "timestamp" | "read">) => void;
   markRead: (id: string) => void;
+  markAllRead: () => void;
 }
 
 const NotificationContext = createContext<NotificationContextValue | undefined>(
   undefined,
 );
 
+const minutesAgo = (m: number) =>
+  new Date(Date.now() - m * 60 * 1000).toISOString();
+
+const demoNotifications: Notification[] = [
+  {
+    id: crypto.randomUUID(),
+    type: "queue_update",
+    message: "You're now #2 in line",
+    timestamp: minutesAgo(2),
+    read: false,
+  },
+  {
+    id: crypto.randomUUID(),
+    type: "status_change",
+    message: "Your status is now almost ready",
+    timestamp: minutesAgo(15),
+    read: false,
+  },
+  {
+    id: crypto.randomUUID(),
+    type: "queue_update",
+    message: "Estimated wait updated to 12 minutes",
+    timestamp: minutesAgo(60),
+    read: true,
+  },
+  {
+    id: crypto.randomUUID(),
+    type: "status_change",
+    message: "You joined the queue",
+    timestamp: minutesAgo(60 * 3),
+    read: true,
+  },
+];
+
 export function NotificationProvider({ children }: { children: ReactNode }) {
-  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [notifications, setNotifications] =
+    useState<Notification[]>(demoNotifications);
 
   function push(n: Omit<Notification, "id" | "timestamp" | "read">) {
     const newNotification: Notification = {
@@ -30,8 +66,14 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     );
   }
 
+  function markAllRead() {
+    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+  }
+
   return (
-    <NotificationContext.Provider value={{ notifications, push, markRead }}>
+    <NotificationContext.Provider
+      value={{ notifications, push, markRead, markAllRead }}
+    >
       {children}
     </NotificationContext.Provider>
   );

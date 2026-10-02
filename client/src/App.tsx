@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "./context/AuthContext";
 import { NotificationProvider } from "./context/NotificationContext";
 import Navbar from "./components/Navbar";
+import NotificationBell from "./components/NotificationBell";
 import Home from "./pages/Home";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
@@ -12,13 +13,18 @@ import Dashboard from "./pages/Dashboard";
 import Calendar from "./pages/Calendar";
 import AdminDashboard from "./pages/AdminDashboard";
 import ProtectedRoute from "./components/ProtectedRoute";
+import NotificationTester from "./components/NotificationTester";
 
 function App() {
   return (
     <NotificationProvider>
       <BrowserRouter>
         <AuthProvider>
-          <Navbar />
+          <div className="app-navbar">
+            <Navbar />
+            <NotificationBell />
+          </div>
+          <NotificationTester />
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/login" element={<Login />} />
