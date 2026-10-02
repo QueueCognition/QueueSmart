@@ -1,7 +1,7 @@
-import { Navigate, useLocation } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
-import type { UserRole } from '../types/auth';
-import { hierarchy } from '../utils/roleUtils';
+import { Navigate, useLocation } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
+import type { UserRole } from "../types/auth";
+import { hierarchy } from "../utils/roleUtils";
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -17,13 +17,7 @@ function ProtectedRoute({ children, minRole }: ProtectedRouteProps) {
   }
 
   if (!isAuthenticated) {
-    return (
-      <Navigate
-        to="/login"
-        state={{ from: location.pathname }}
-        replace
-      />
-    );
+    return <Navigate to="/login" state={{ from: location.pathname }} replace />;
   }
 
   if (minRole && !hierarchy(user, minRole)) {

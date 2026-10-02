@@ -1,11 +1,11 @@
-export type QueueStatus = 'waiting' | 'almost_ready' | 'served' | 'cancelled';
+export type QueueStatus = "waiting" | "almost_ready" | "served" | "cancelled";
 
 export interface Service {
   id: string;
   name: string;
   description: string;
   expectedDuration: number; // minutes
-  priority: 'low' | 'medium' | 'high';
+  priority: "low" | "medium" | "high";
 }
 
 export interface QueueEntry {
@@ -20,7 +20,7 @@ export interface QueueEntry {
 export interface Notification {
   id: string;
   message: string;
-  type: 'queue_update' | 'status_change';
+  type: "queue_update" | "status_change";
   timestamp: string;
   read: boolean;
 }

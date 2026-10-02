@@ -1,25 +1,29 @@
-import type { QueueStatus } from '../types/queue';
+import type { QueueStatus } from "../types/queue";
 import {
   mockGetAdminServiceWaitSummaries,
   mockToggleAdminServiceAvailability,
   mockUpdateAdminQueueStatus,
   type AdminQueueEntry,
   type AdminServiceQueueSummary,
-} from './mockAdminQueueService';
+} from "./mockAdminQueueService";
 
 export type { AdminQueueEntry, AdminServiceQueueSummary };
 
-export async function getAdminServiceWaitSummaries(): Promise<AdminServiceQueueSummary[]> {
+export async function getAdminServiceWaitSummaries(): Promise<
+  AdminServiceQueueSummary[]
+> {
   return mockGetAdminServiceWaitSummaries();
 }
 
 export async function updateAdminQueueStatus(
   entryId: string,
-  status: QueueStatus
+  status: QueueStatus,
 ): Promise<AdminQueueEntry> {
   return mockUpdateAdminQueueStatus(entryId, status);
 }
 
-export async function toggleAdminServiceAvailability(serviceId: string): Promise<boolean> {
+export async function toggleAdminServiceAvailability(
+  serviceId: string,
+): Promise<boolean> {
   return mockToggleAdminServiceAvailability(serviceId);
 }

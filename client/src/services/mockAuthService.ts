@@ -4,25 +4,28 @@ import type {
   PasswordResetResult,
   RegisterDetails,
   User,
-} from '../types/auth';
-import { AuthError } from './authError';
-import { getClientIp } from './ipService';
+} from "../types/auth";
+import { AuthError } from "./authError";
+import { getClientIp } from "./ipService";
 
 export const DEMO_CREDENTIALS = {
-  email: 'demo@queuesmart.dev',
-  password: 'password123',
+  email: "demo@queuesmart.dev",
+  password: "password123",
 } as const;
 
 export const ADMIN_CREDENTIALS = {
-  email: 'admin@queuesmart.dev',
-  password: 'password123',
+  email: "admin@queuesmart.dev",
+  password: "password123",
 } as const;
 
 const PASSWORD_RESET_COOLDOWN_SECONDS = 60;
-const ACCOUNTS_KEY = 'queuesmart.mock.accounts';
-const RESET_TIMES_KEY = 'queuesmart.mock.reset-times';
+const ACCOUNTS_KEY = "queuesmart.mock.accounts";
+const RESET_TIMES_KEY = "queuesmart.mock.reset-times";
 
-export async function mockLogin({ email, password }: LoginCredentials): Promise<AuthSession> {
+export async function mockLogin({
+  email,
+  password,
+}: LoginCredentials): Promise<AuthSession> {
   const [boundIp] = await Promise.all([getClientIp(), delay(600)]);
 
   const normalizedEmail = email.trim().toLowerCase();
@@ -35,34 +38,36 @@ export async function mockLogin({ email, password }: LoginCredentials): Promise<
     password === ADMIN_CREDENTIALS.password;
 
   if (!matchesDemoAccount && !matchesAdminAccount) {
-    throw new AuthError('Incorrect email or password', 401);
+    throw new AuthError("Incorrect email or password", 401);
   }
 
   const user: User = matchesAdminAccount
     ? {
-        id: 'u_admin',
-        firstName: 'Admin',
-        lastName: 'Manager',
+        id: "u_admin",
+        firstName: "Admin",
+        lastName: "Manager",
         email: normalizedEmail,
-        role: 'admin',
+        role: "admin",
       }
     : {
-        id: 'u_demo',
-        firstName: 'Demo',
-        lastName: 'User',
+        id: "u_demo",
+        firstName: "Demo",
+        lastName: "User",
         email: normalizedEmail,
-        role: 'user',
+        role: "user",
       };
 
   return createSession(user, boundIp);
 }
 
-export async function mockRegister(details: RegisterDetails): Promise<AuthSession> {
+export async function mockRegister(
+  details: RegisterDetails,
+): Promise<AuthSession> {
   const email = details.email.trim().toLowerCase();
   const [boundIp] = await Promise.all([getClientIp(), delay(700)]);
 
   if (accountExists(email)) {
-    throw new AuthError('An account with this email already exists', 409);
+    throw new AuthError("An account with this email already exists", 409);
   }
 
   rememberAccount(email);
@@ -72,19 +77,24 @@ export async function mockRegister(details: RegisterDetails): Promise<AuthSessio
     firstName: details.firstName.trim(),
     lastName: details.lastName.trim(),
     email,
-    role: 'user',
+    role: "user",
   };
 
   return createSession(user, boundIp);
 }
 
-export async function mockRequestPasswordReset(email: string): Promise<PasswordResetResult> {
+export async function mockRequestPasswordReset(
+  email: string,
+): Promise<PasswordResetResult> {
   const normalized = email.trim().toLowerCase();
   await delay(500);
 
   const waitSeconds = remainingCooldown(normalized);
   if (waitSeconds > 0) {
-    throw new AuthError(`Please wait ${waitSeconds}s before requesting another reset link`, 429);
+    throw new AuthError(
+      `Please wait ${waitSeconds}s before requesting another reset link`,
+      429,
+    );
   }
 
   recordResetRequest(normalized);
@@ -118,12 +128,13 @@ function recordResetRequest(email: string) {
 function readAccounts(): string[] {
   const parsed = readJson(ACCOUNTS_KEY);
   if (!Array.isArray(parsed)) return [];
-  return parsed.filter((item): item is string => typeof item === 'string');
+  return parsed.filter((item): item is string => typeof item === "string");
 }
 
 function readResetTimes(): Record<string, number> {
   const parsed = readJson(RESET_TIMES_KEY);
-  if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) return {};
+  if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed))
+    return {};
   return parsed as Record<string, number>;
 }
 

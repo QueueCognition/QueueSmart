@@ -55,9 +55,18 @@
   margin-bottom: 1.5rem;
 }
 
-.status-waiting { background: color-mix(in srgb, var(--status-waiting) 20%, white); color: var(--status-waiting); }
-.status-almost_ready { background: color-mix(in srgb, var(--status-ready) 20%, white); color: var(--status-ready); }
-.status-served { background: color-mix(in srgb, var(--status-served) 20%, white); color: var(--status-served); }
+.status-waiting {
+  background: color-mix(in srgb, var(--status-waiting) 20%, white);
+  color: var(--status-waiting);
+}
+.status-almost_ready {
+  background: color-mix(in srgb, var(--status-ready) 20%, white);
+  color: var(--status-ready);
+}
+.status-served {
+  background: color-mix(in srgb, var(--status-served) 20%, white);
+  color: var(--status-served);
+}
 
 .status-progress-track {
   display: flex;

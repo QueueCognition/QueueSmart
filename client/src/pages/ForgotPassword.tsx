@@ -1,19 +1,19 @@
-import '../styles/auth.css';
-import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { AuthError, requestPasswordReset } from '../services/authService';
+import "../styles/auth.css";
+import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
+import { AuthError, requestPasswordReset } from "../services/authService";
 
 function submitLabel(submitting: boolean, cooldown: number) {
-  if (submitting) return 'Sending…';
+  if (submitting) return "Sending…";
   if (cooldown > 0) return `Resend in ${cooldown}s`;
-  return 'Send reset link';
+  return "Send reset link";
 }
 
 function ForgotPassword() {
-  const [email, setEmail] = useState('');
-  const [fieldError, setFieldError] = useState('');
-  const [formError, setFormError] = useState('');
-  const [sentTo, setSentTo] = useState('');
+  const [email, setEmail] = useState("");
+  const [fieldError, setFieldError] = useState("");
+  const [formError, setFormError] = useState("");
+  const [sentTo, setSentTo] = useState("");
   const [cooldown, setCooldown] = useState(0);
   const [submitting, setSubmitting] = useState(false);
 
@@ -25,21 +25,21 @@ function ForgotPassword() {
 
   function validate() {
     if (!email.trim()) {
-      setFieldError('Email is required');
+      setFieldError("Email is required");
       return false;
     }
     if (!/^\S+@\S+\.\S+$/.test(email)) {
-      setFieldError('Enter a valid email address');
+      setFieldError("Enter a valid email address");
       return false;
     }
-    setFieldError('');
+    setFieldError("");
     return true;
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setFormError('');
-    setSentTo('');
+    setFormError("");
+    setSentTo("");
     if (!validate()) return;
 
     setSubmitting(true);
@@ -49,7 +49,9 @@ function ForgotPassword() {
       setCooldown(result.retryAfterSeconds);
     } catch (error) {
       setFormError(
-        error instanceof AuthError ? error.message : 'Something went wrong. Please try again.'
+        error instanceof AuthError
+          ? error.message
+          : "Something went wrong. Please try again.",
       );
     } finally {
       setSubmitting(false);
@@ -62,13 +64,15 @@ function ForgotPassword() {
         <header className="auth__header">
           <h1 className="auth__title">Reset your password</h1>
           <p className="auth__subtitle">
-            Enter your account email and we'll send you a link to choose a new password.
+            Enter your account email and we'll send you a link to choose a new
+            password.
           </p>
         </header>
 
         {sentTo && (
           <p className="auth__alert auth__alert--success" role="status">
-            If an account exists for <strong>{sentTo}</strong>, we've sent a password reset link.
+            If an account exists for <strong>{sentTo}</strong>, we've sent a
+            password reset link.
           </p>
         )}
 
@@ -85,14 +89,14 @@ function ForgotPassword() {
             </label>
             <input
               id="email"
-              className={`auth__input${fieldError ? ' auth__input--invalid' : ''}`}
+              className={`auth__input${fieldError ? " auth__input--invalid" : ""}`}
               type="email"
               autoComplete="email"
               placeholder="jamie@example.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               aria-invalid={Boolean(fieldError)}
-              aria-describedby={fieldError ? 'email-error' : undefined}
+              aria-describedby={fieldError ? "email-error" : undefined}
             />
             {fieldError && (
               <span className="auth__error" id="email-error">
@@ -101,7 +105,11 @@ function ForgotPassword() {
             )}
           </div>
 
-          <button type="submit" className="auth__submit" disabled={submitting || cooldown > 0}>
+          <button
+            type="submit"
+            className="auth__submit"
+            disabled={submitting || cooldown > 0}
+          >
             {submitLabel(submitting, cooldown)}
           </button>
         </form>

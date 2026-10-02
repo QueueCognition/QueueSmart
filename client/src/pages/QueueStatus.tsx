@@ -1,10 +1,10 @@
-import '../styles/queuestatus.css';
-import { useQueueStatus } from '../hooks/useQueueStatus';
+import "../styles/queuestatus.css";
+import { useQueueStatus } from "../hooks/useQueueStatus";
 
-const STAGES = ['waiting', 'almost_ready', 'served'];
+const STAGES = ["waiting", "almost_ready", "served"];
 
 function QueueStatus() {
-  const entry = useQueueStatus('q1');
+  const entry = useQueueStatus("q1");
 
   if (!entry) return <p>Loading your queue status...</p>;
 
@@ -21,14 +21,14 @@ function QueueStatus() {
         </div>
 
         <span className={`status-badge status-${entry.status}`}>
-          {entry.status.replace('_', ' ')}
+          {entry.status.replace("_", " ")}
         </span>
 
         <div className="status-progress-track">
           {STAGES.map((stage, i) => (
             <div
               key={stage}
-              className={`status-progress-step ${i <= currentStageIndex ? 'active' : ''}`}
+              className={`status-progress-step ${i <= currentStageIndex ? "active" : ""}`}
             />
           ))}
         </div>

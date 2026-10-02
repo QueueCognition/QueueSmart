@@ -1,20 +1,24 @@
-import { useState } from 'react'
-import { Link, NavLink } from 'react-router-dom'
-import { useAuth } from '../context/AuthContext'
-import { isStaff } from '../utils/roleUtils'
+import { useState } from "react";
+import { Link, NavLink } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
+import { isStaff } from "../utils/roleUtils";
 
 function Navbar() {
-  const [scheduleOpen, setScheduleOpen] = useState(false)
-  const [managementOpen, setManagementOpen] = useState(false)
-  const { user, isAuthenticated, isInitializing, logout } = useAuth()
+  const [scheduleOpen, setScheduleOpen] = useState(false);
+  const [managementOpen, setManagementOpen] = useState(false);
+  const { user, isAuthenticated, isInitializing, logout } = useAuth();
 
   return (
     <nav className="navbar">
-      <Link to="/" className="navbar-brand">QueueSmart</Link>
+      <Link to="/" className="navbar-brand">
+        QueueSmart
+      </Link>
 
       <div className="navbar-links">
-        <NavLink to="/" end className="navbar-link">Home</NavLink>
-      
+        <NavLink to="/" end className="navbar-link">
+          Home
+        </NavLink>
+
         {isAuthenticated && (
           <NavLink to="/dashboard" className="navbar-link">
             Dashboard
@@ -44,7 +48,10 @@ function Navbar() {
               <Link to="/schedule/join-queue" className="navbar-dropdown-item">
                 Schedule Appointment
               </Link>
-              <Link to="/schedule/queue-status" className="navbar-dropdown-item">
+              <Link
+                to="/schedule/queue-status"
+                className="navbar-dropdown-item"
+              >
                 Check Queue Status
               </Link>
             </div>
@@ -78,18 +85,19 @@ function Navbar() {
                     type="button"
                     className="navbar-dropdown-item navbar-dropdown-button"
                     onClick={() => {
-                      setManagementOpen(false)
-                      logout()
+                      setManagementOpen(false);
+                      logout();
                     }}
                   >
-                    Sign out{user ? ` (${user.firstName} ${user.lastName})` : ''}
+                    Sign out
+                    {user ? ` (${user.firstName} ${user.lastName})` : ""}
                   </button>
                 </div>
               )}
             </div>
           ) : (
             <button type="button" className="navbar-link" onClick={logout}>
-              Sign out{user ? ` (${user.firstName} ${user.lastName})` : ''}
+              Sign out{user ? ` (${user.firstName} ${user.lastName})` : ""}
             </button>
           )
         ) : isInitializing ? null : (
@@ -99,7 +107,7 @@ function Navbar() {
         )}
       </div>
     </nav>
-  )
+  );
 }
 
-export default Navbar
+export default Navbar;

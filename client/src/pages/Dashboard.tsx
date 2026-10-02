@@ -1,25 +1,24 @@
-
-import { useState } from 'react';
-import '../styles/dashboard.css';
-import { Link } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import { useState } from "react";
+import "../styles/dashboard.css";
+import { Link } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 
 function Dashboard() {
   const { user } = useAuth();
 
-    const [notifications, setNotifications] = useState([
-    { id: 1, text: 'Notification 1' },
-    { id: 2, text: 'Notification 2.' },
-    { id: 3, text: 'Notification 3.' },
-    { id: 4, text: 'Notification 4' },
-    { id: 5, text: 'NOtification 5' },
-    ]);
+  const [notifications, setNotifications] = useState([
+    { id: 1, text: "Notification 1" },
+    { id: 2, text: "Notification 2." },
+    { id: 3, text: "Notification 3." },
+    { id: 4, text: "Notification 4" },
+    { id: 5, text: "NOtification 5" },
+  ]);
 
-    const dismissNotification = (id: number) => {
+  const dismissNotification = (id: number) => {
     setNotifications((previous) =>
-        previous.filter((notification) => notification.id !== id)
+      previous.filter((notification) => notification.id !== id),
     );
-    };
+  };
 
   return (
     <div className="dashboard-page">
@@ -32,9 +31,7 @@ function Dashboard() {
         <section className="dashboard-card">
           <h2>Current Queue</h2>
 
-          <p className="dashboard-queue-label">
-            Your position in the queue
-          </p>
+          <p className="dashboard-queue-label">Your position in the queue</p>
           <p className="dashboard-queue-number">#3</p>
 
           <p className="dashboard-wait">
@@ -61,30 +58,25 @@ function Dashboard() {
         </section>
 
         <section className="dashboard-card dashboard-card--full">
-        <h2>Notifications</h2>
+          <h2>Notifications</h2>
 
-        <div className="dashboard-notifications">
+          <div className="dashboard-notifications">
             {notifications.map((notification) => (
-            <div
-                key={notification.id}
-                className="notification-item"
-            >
-                <span className="notification-text">
-                {notification.text}
-                </span>
+              <div key={notification.id} className="notification-item">
+                <span className="notification-text">{notification.text}</span>
 
                 <button
-                type="button"
-                className="cross-btn"
-                onClick={() => dismissNotification(notification.id)}
-                aria-label="Dismiss notification"
-                title="Dismiss"
+                  type="button"
+                  className="cross-btn"
+                  onClick={() => dismissNotification(notification.id)}
+                  aria-label="Dismiss notification"
+                  title="Dismiss"
                 >
-                &times;
+                  &times;
                 </button>
-            </div>
+              </div>
             ))}
-        </div>
+          </div>
         </section>
       </div>
     </div>
