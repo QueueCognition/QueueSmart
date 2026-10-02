@@ -6,12 +6,17 @@ import {
   useMemo,
   useState,
   type ReactNode,
-} from 'react';
-import { useNavigate } from 'react-router-dom';
-import type { AuthSession, LoginCredentials, RegisterDetails, User } from '../types/auth';
-import * as authService from '../services/authService';
+} from "react";
+import { useNavigate } from "react-router-dom";
+import type {
+  AuthSession,
+  LoginCredentials,
+  RegisterDetails,
+  User,
+} from "../types/auth";
+import * as authService from "../services/authService";
 
-const STORAGE_KEY = 'queuesmart.auth.session';
+const STORAGE_KEY = "queuesmart.auth.session";
 
 interface AuthContextValue {
   user: User | null;
@@ -26,7 +31,8 @@ interface AuthContextValue {
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 function readStoredSession(): AuthSession | null {
-  const raw = localStorage.getItem(STORAGE_KEY) ?? sessionStorage.getItem(STORAGE_KEY);
+  const raw =
+    localStorage.getItem(STORAGE_KEY) ?? sessionStorage.getItem(STORAGE_KEY);
   if (!raw) return null;
 
   try {
@@ -44,7 +50,10 @@ function readStoredSession(): AuthSession | null {
 
 function persistSession(session: AuthSession, remember: boolean) {
   clearStoredSession();
-  (remember ? localStorage : sessionStorage).setItem(STORAGE_KEY, JSON.stringify(session));
+  (remember ? localStorage : sessionStorage).setItem(
+    STORAGE_KEY,
+    JSON.stringify(session),
+  );
 }
 
 function clearStoredSession() {
@@ -53,7 +62,9 @@ function clearStoredSession() {
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [session, setSession] = useState<AuthSession | null>(() => readStoredSession());
+  const [session, setSession] = useState<AuthSession | null>(() =>
+    readStoredSession(),
+  );
   const [verifiedToken, setVerifiedToken] = useState<string | null>(null);
   const [sessionInvalidated, setSessionInvalidated] = useState(false);
   const navigate = useNavigate();
@@ -79,7 +90,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSession(null);
       setVerifiedToken(null);
       setSessionInvalidated(true);
-      navigate('/login', { replace: true });
+      navigate("/login", { replace: true });
     });
 
     return () => {
@@ -87,12 +98,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, [session, verifiedToken, navigate]);
 
-  const applySession = useCallback((nextSession: AuthSession, remember: boolean) => {
-    persistSession(nextSession, remember);
-    setSessionInvalidated(false);
-    setVerifiedToken(nextSession.token);
-    setSession(nextSession);
-  }, []);
+  const applySession = useCallback(
+    (nextSession: AuthSession, remember: boolean) => {
+      persistSession(nextSession, remember);
+      setSessionInvalidated(false);
+      setVerifiedToken(nextSession.token);
+      setSession(nextSession);
+    },
+    [],
+  );
 
   const login = useCallback(
     async (credentials: LoginCredentials) => {
@@ -100,7 +114,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       applySession(nextSession, credentials.remember);
       return nextSession.user;
     },
-    [applySession]
+    [applySession],
   );
 
   const register = useCallback(
@@ -109,7 +123,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       applySession(nextSession, true);
       return nextSession.user;
     },
-    [applySession]
+    [applySession],
   );
 
   const logout = useCallback(() => {
@@ -129,7 +143,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       register,
       logout,
     }),
-    [session, isInitializing, sessionInvalidated, login, register, logout]
+    [session, isInitializing, sessionInvalidated, login, register, logout],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
@@ -137,6 +151,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
 export function useAuth() {
   const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error('useAuth must be used within AuthProvider');
+  if (!ctx) throw new Error("useAuth must be used within AuthProvider");
   return ctx;
 }

@@ -1,34 +1,42 @@
-import { useState } from 'react'
-import { Link, NavLink } from 'react-router-dom'
-import { useAuth } from '../context/AuthContext'
+import { useState } from "react";
+import { Link, NavLink } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
+import { isStaff } from "../utils/roleUtils";
 
 function Navbar() {
-  const [scheduleOpen, setScheduleOpen] = useState(false)
-  const { user, isAuthenticated, isInitializing, logout } = useAuth()
-
-  const authControl = isAuthenticated ? (
-    <button type="button" className="navbar-link" onClick={logout}>
-      Sign out{user ? ` (${user.firstName} ${user.lastName})` : ''}
-    </button>
-  ) : (
-    <NavLink to="/login" className="navbar-link">
-      Sign in
-    </NavLink>
-  )
+  const [scheduleOpen, setScheduleOpen] = useState(false);
+  const [managementOpen, setManagementOpen] = useState(false);
+  const { user, isAuthenticated, isInitializing, logout } = useAuth();
 
   return (
     <nav className="navbar">
-      <Link to="/" className="navbar-brand">QueueSmart</Link>
+      <Link to="/" className="navbar-brand">
+        QueueSmart
+      </Link>
 
       <div className="navbar-links">
-        <NavLink to="/" end className="navbar-link">Home</NavLink>
+        {isAuthenticated && (
+          <NavLink to="/dashboard" className="navbar-link">
+            Dashboard
+          </NavLink>
+        )}
+
+        {isAuthenticated && (
+          <NavLink to="/calendar" className="navbar-link">
+            Calendar
+          </NavLink>
+        )}
 
         <div
           className="navbar-dropdown"
           onMouseEnter={() => setScheduleOpen(true)}
           onMouseLeave={() => setScheduleOpen(false)}
         >
-          <button className="navbar-link navbar-dropdown-trigger">
+          <button
+            type="button"
+            className="navbar-link navbar-dropdown-trigger"
+            onClick={() => setScheduleOpen((prev) => !prev)}
+          >
             Schedule ▾
           </button>
           {scheduleOpen && (
@@ -36,17 +44,66 @@ function Navbar() {
               <Link to="/schedule/join-queue" className="navbar-dropdown-item">
                 Schedule Appointment
               </Link>
-              <Link to="/schedule/queue-status" className="navbar-dropdown-item">
+              <Link
+                to="/schedule/queue-status"
+                className="navbar-dropdown-item"
+              >
                 Check Queue Status
               </Link>
             </div>
           )}
         </div>
 
-        {isInitializing ? null : authControl}
+        {isAuthenticated ? (
+          isStaff(user) ? (
+            <div
+              className="navbar-dropdown"
+              onMouseEnter={() => setManagementOpen(true)}
+              onMouseLeave={() => setManagementOpen(false)}
+            >
+              <button
+                type="button"
+                className="navbar-link navbar-dropdown-trigger"
+                onClick={() => setManagementOpen((prev) => !prev)}
+              >
+                Management ▾
+              </button>
+              {managementOpen && (
+                <div className="navbar-dropdown-menu">
+                  <Link
+                    to="/admin"
+                    className="navbar-dropdown-item"
+                    onClick={() => setManagementOpen(false)}
+                  >
+                    Admin Dashboard
+                  </Link>
+                  <button
+                    type="button"
+                    className="navbar-dropdown-item navbar-dropdown-button"
+                    onClick={() => {
+                      setManagementOpen(false);
+                      logout();
+                    }}
+                  >
+                    Sign out
+                    {user ? ` (${user.firstName} ${user.lastName})` : ""}
+                  </button>
+                </div>
+              )}
+            </div>
+          ) : (
+            <button type="button" className="navbar-link" onClick={logout}>
+              Sign out{user ? ` (${user.firstName} ${user.lastName})` : ""}
+            </button>
+          )
+        ) : isInitializing ? null : (
+          <NavLink to="/login" className="navbar-link">
+            Sign in
+          </NavLink>
+        )}
       </div>
     </nav>
-  )
+  );
 }
 
-export default Navbar
+export default Navbar;

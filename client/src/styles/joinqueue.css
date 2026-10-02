@@ -43,14 +43,16 @@ label {
   color: var(--text-primary);
 }
 
-input, select {
+input,
+select {
   padding: 0.6rem 0.75rem;
   border: 1px solid var(--border-light);
   border-radius: 6px;
   font-size: 0.95rem;
 }
 
-input:focus, select:focus {
+input:focus,
+select:focus {
   outline: 2px solid var(--navy-500);
   outline-offset: 1px;
 }

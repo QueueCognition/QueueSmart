@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
-import type { QueueEntry } from '../types/queue';
-import { getQueueStatus } from '../services/queueService';
+import { useEffect, useState } from "react";
+import type { QueueEntry } from "../types/queue";
+import { getQueueStatus } from "../services/queueService";
 
 export function useQueueStatus(entryId: string) {
   const [entry, setEntry] = useState<QueueEntry | null>(null);

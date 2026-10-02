@@ -92,7 +92,9 @@
   color: var(--text-primary);
   font-family: inherit;
   font-size: 0.95rem;
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
 }
 
 .auth__input:focus {
@@ -132,7 +134,7 @@
   cursor: pointer;
 }
 
-.auth__checkbox input[type='checkbox'] {
+.auth__checkbox input[type="checkbox"] {
   width: 1rem;
   height: 1rem;
   margin: 0;
@@ -214,7 +216,10 @@
   text-align: center;
   text-decoration: none;
   cursor: pointer;
-  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease;
 }
 
 .auth__footer-button--primary {
