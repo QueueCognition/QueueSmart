@@ -79,19 +79,6 @@
   border-bottom: none;
 }
 
-.dashboard-notifications {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.dashboard-notification {
-  padding: 0.85rem 1rem;
-  background: var(--navy-100);
-  border-radius: 10px;
-  color: var(--text-primary);
-}
-
 .dashboard-card--full {
   grid-column: 1 / -1;
 }
@@ -108,7 +95,6 @@
   text-decoration: underline;
 }
 
-/* Scrollable notifications box */
 .dashboard-notifications {
   max-height: 250px;
   overflow-y: auto;
@@ -121,7 +107,6 @@
   padding: 4px 8px 4px 0;
 }
 
-/* Individual notification */
 .notification-item {
   display: flex;
   align-items: center;
@@ -136,13 +121,11 @@
   flex-shrink: 0;
 }
 
-/* Notification text */
 .notification-text {
   flex: 1;
   overflow-wrap: anywhere;
 }
 
-/* Dismiss button */
 .cross-btn {
   border: none;
   background: transparent;
