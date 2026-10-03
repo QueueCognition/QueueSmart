@@ -39,11 +39,16 @@ function Navbar() {
           >
             Schedule ▾
           </button>
+
           {scheduleOpen && (
             <div className="navbar-dropdown-menu">
-              <Link to="/schedule/join-queue" className="navbar-dropdown-item">
+              <Link
+                to="/schedule/join-queue"
+                className="navbar-dropdown-item"
+              >
                 Schedule Appointment
               </Link>
+
               <Link
                 to="/schedule/queue-status"
                 className="navbar-dropdown-item"
@@ -68,6 +73,7 @@ function Navbar() {
               >
                 Management ▾
               </button>
+
               {managementOpen && (
                 <div className="navbar-dropdown-menu">
                   <Link
@@ -77,6 +83,23 @@ function Navbar() {
                   >
                     Admin Dashboard
                   </Link>
+
+                  <Link
+                    to="/admin/services"
+                    className="navbar-dropdown-item"
+                    onClick={() => setManagementOpen(false)}
+                  >
+                    Service Management
+                  </Link>
+
+                  <Link
+                    to="/admin/queues"
+                    className="navbar-dropdown-item"
+                    onClick={() => setManagementOpen(false)}
+                  >
+                    Queue Management
+                  </Link>
+
                   <button
                     type="button"
                     className="navbar-dropdown-item navbar-dropdown-button"
@@ -92,7 +115,11 @@ function Navbar() {
               )}
             </div>
           ) : (
-            <button type="button" className="navbar-link" onClick={logout}>
+            <button
+              type="button"
+              className="navbar-link"
+              onClick={logout}
+            >
               Sign out{user ? ` (${user.firstName} ${user.lastName})` : ""}
             </button>
           )
