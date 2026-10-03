@@ -31,7 +31,7 @@ const demoEntries: MyQueueEntry[] = [
     serviceName: "Financial Aid Consultation",
     date: new Date().toISOString().slice(0, 10),
     timeSlot: "9:30 AM",
-    position: 2,
+    position: 3,
     estimatedWaitMinutes: 12,
   },
 ];
