@@ -29,7 +29,7 @@ const initialQueue: QueueUser[] = [
   },
   {
     id: 3,
-    name: 'James Wilson',
+    name: 'Demo User',
     service: 'Financial Aid Consultation',
     priority: 'low',
     waitTime: 20,

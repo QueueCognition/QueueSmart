@@ -1,6 +1,8 @@
 .queue-status-page {
   display: flex;
-  justify-content: center;
+  flex-direction: column; /* stacks the status card above the table */
+  align-items: center; /* centers both cards horizontally */
+  gap: 1.5rem; /* space between the status card and the table */
   padding: 3rem 2rem;
 }
 
@@ -94,4 +96,51 @@
 .wait-time strong {
   color: var(--text-primary);
   font-size: 1.15rem;
+}
+
+.queue-table-card {
+  width: 100%;
+  max-width: 440px; 
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
+  border-radius: 16px;
+  padding: 1.5rem 2rem;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+}
+
+.queue-table-card h2 {
+  font-size: 1.1rem;
+  margin-bottom: 1rem;
+  color: var(--text-primary);
+}
+
+.queue-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.queue-table th {
+  padding: 0.6rem 0.5rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  border-bottom: 2px solid var(--border-light);
+}
+
+.queue-table td {
+  padding: 0.75rem 0.5rem;
+  font-size: 0.95rem;
+  color: var(--text-primary);
+  border-bottom: 1px solid var(--border-light);
+}
+
+.queue-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.queue-table tbody tr:hover {
+  background: var(--navy-100);
 }

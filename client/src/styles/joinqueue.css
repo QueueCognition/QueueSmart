@@ -1,8 +1,11 @@
 .join-queue-page {
-  padding: 2rem 2rem 2rem 3rem;
+  display: flex;
+  justify-content: center; 
+  padding: 3rem 2rem; 
 }
 
 .appointment-card {
+  width: 100%; 
   max-width: 480px;
   background: var(--bg-card);
   border: 1px solid var(--border-light);
