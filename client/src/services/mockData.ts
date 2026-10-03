@@ -32,3 +32,58 @@ export const mockQueueEntry: QueueEntry = {
   status: "waiting",
   joinedAt: new Date().toISOString(),
 };
+
+
+export type AppointmentStatus = "upcoming" | "completed" | "cancelled";
+
+export interface MockAppointment {
+  id: string;
+  userId: string;
+  serviceId: string;
+  date: string;
+  time: string;
+  status: AppointmentStatus;
+}
+
+export const mockAppointments: MockAppointment[] = [
+  {
+    id: "a1",
+    userId: "u_demo",
+    serviceId: "s1",
+    date: "2026-10-08",
+    time: "10:00 AM",
+    status: "upcoming",
+  },
+  {
+    id: "a2",
+    userId: "u_demo",
+    serviceId: "s3",
+    date: "2026-10-15",
+    time: "2:30 PM",
+    status: "upcoming",
+  },
+  {
+    id: "a3",
+    userId: "u_demo",
+    serviceId: "s2",
+    date: "2026-09-12",
+    time: "11:00 AM",
+    status: "completed",
+  },
+  {
+    id: "a4",
+    userId: "u_demo",
+    serviceId: "s1",
+    date: "2026-08-20",
+    time: "9:30 AM",
+    status: "completed",
+  },
+  {
+    id: "a5",
+    userId: "u_demo",
+    serviceId: "s3",
+    date: "2026-11-03",
+    time: "1:00 PM",
+    status: "upcoming",
+  },
+];
