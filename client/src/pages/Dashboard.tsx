@@ -1,24 +1,11 @@
-import { useState } from "react";
+import { useNotifications } from "../context/NotificationContext";
 import "../styles/dashboard.css";
 import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
 function Dashboard() {
   const { user } = useAuth();
-
-  const [notifications, setNotifications] = useState([
-    { id: 1, text: "Notification 1" },
-    { id: 2, text: "Notification 2." },
-    { id: 3, text: "Notification 3." },
-    { id: 4, text: "Notification 4" },
-    { id: 5, text: "NOtification 5" },
-  ]);
-
-  const dismissNotification = (id: number) => {
-    setNotifications((previous) =>
-      previous.filter((notification) => notification.id !== id),
-    );
-  };
+  const { notifications, markRead } = useNotifications();
 
   return (
     <div className="dashboard-page">
@@ -61,21 +48,31 @@ function Dashboard() {
           <h2>Notifications</h2>
 
           <div className="dashboard-notifications">
-            {notifications.map((notification) => (
-              <div key={notification.id} className="notification-item">
-                <span className="notification-text">{notification.text}</span>
+            {notifications.filter((notification) => !notification.read).length === 0 ? (
+              <p className="notifications-empty">
+                You're all caught up!
+              </p>
+            ) : (
+              notifications
+                .filter((notification) => !notification.read)
+                .map((notification) => (
+                  <div key={notification.id} className="notification-item">
+                    <span className="notification-text">
+                      {notification.message}
+                    </span>
 
-                <button
-                  type="button"
-                  className="cross-btn"
-                  onClick={() => dismissNotification(notification.id)}
-                  aria-label="Dismiss notification"
-                  title="Dismiss"
-                >
-                  &times;
-                </button>
-              </div>
-            ))}
+                    <button
+                      type="button"
+                      className="cross-btn"
+                      onClick={() => markRead(notification.id)}
+                      aria-label="Dismiss notification"
+                      title="Dismiss"
+                    >
+                      &times;
+                    </button>
+                  </div>
+                ))
+            )}
           </div>
         </section>
       </div>
