@@ -1,11 +1,13 @@
 .join-queue-page {
   display: flex;
-  justify-content: center; 
-  padding: 3rem 2rem; 
+  flex-direction: column; 
+  align-items: center; 
+  gap: 1.5rem;
+  padding: 3rem 2rem;
 }
 
 .appointment-card {
-  width: 100%; 
+  width: 100%;
   max-width: 480px;
   background: var(--bg-card);
   border: 1px solid var(--border-light);
@@ -66,9 +68,29 @@ select:focus {
 }
 
 .wait-estimate {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 0.75rem 1rem;
+  margin-bottom: 1.25rem;
+  background: var(--bg-page);
+  border: 1px solid var(--border-light);
+  border-radius: 8px;
   font-size: 0.9rem;
   color: var(--text-muted);
-  margin-bottom: 1.25rem;
+}
+
+.wait-estimate-main {
+  color: var(--text-primary);
+}
+
+.wait-estimate-main strong {
+  font-size: 1.05rem;
+  color: var(--navy-700);
+}
+
+.wait-estimate-ahead {
+  color: var(--text-muted);
 }
 
 .priority-pill {
@@ -94,4 +116,74 @@ select:focus {
 .submit-button:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+}
+
+.my-queue-card {
+  width: 100%;
+  max-width: 480px; 
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
+  border-radius: 12px;
+  padding: 1.5rem 2rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.my-queue-card h2 {
+  font-size: 1.15rem;
+  margin-bottom: 1rem;
+}
+
+.my-queue-empty {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.my-queue-list {
+  list-style: none;
+}
+
+.my-queue-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.85rem 0;
+  border-bottom: 1px solid var(--border-light);
+}
+
+.my-queue-item:last-child {
+  border-bottom: none;
+}
+
+.my-queue-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.my-queue-service {
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.my-queue-meta {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.leave-button {
+  flex-shrink: 0;
+  padding: 0.4rem 0.85rem;
+  background: none;
+  border: 1px solid #c0392b;
+  border-radius: 6px;
+  color: #c0392b;
+  font-family: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.leave-button:hover {
+  background: #c0392b;
+  color: white;
 }

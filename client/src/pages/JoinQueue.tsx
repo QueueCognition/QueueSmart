@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import type { Service } from "../types/queue";
 import { getServices, joinQueue } from "../services/queueService";
 import { useNotifications } from "../context/NotificationContext";
+import { useAuth } from "../context/AuthContext";
 
 const TIME_SLOTS = [
   "9:00 AM",
@@ -15,6 +16,34 @@ const TIME_SLOTS = [
   "2:00 PM",
 ];
 
+type MyQueueEntry = {
+  id: string;
+  serviceName: string;
+  date: string;
+  timeSlot: string;
+  position: number;
+  estimatedWaitMinutes: number;
+};
+
+const demoEntries: MyQueueEntry[] = [
+  {
+    id: "demo-1",
+    serviceName: "Financial Aid Consultation",
+    date: new Date().toISOString().slice(0, 10),
+    timeSlot: "9:30 AM",
+    position: 2,
+    estimatedWaitMinutes: 12,
+  },
+];
+
+
+function getPeopleAhead(serviceId: string): number {
+  const seed = serviceId
+    .split("")
+    .reduce((sum, ch) => sum + ch.charCodeAt(0), 0);
+  return (seed % 4) + 1;
+}
+
 function JoinQueue() {
   const [services, setServices] = useState<Service[]>([]);
   const [serviceId, setServiceId] = useState("");
@@ -24,13 +53,19 @@ function JoinQueue() {
   const [email, setEmail] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
+  const [myQueue, setMyQueue] = useState<MyQueueEntry[]>(demoEntries);
   const { push } = useNotifications();
+  const { isAuthenticated } = useAuth();
 
   useEffect(() => {
     getServices().then(setServices);
   }, []);
 
   const selectedService = services.find((s) => s.id === serviceId);
+  const peopleAhead = selectedService ? getPeopleAhead(selectedService.id) : 0;
+  const estimatedWait = selectedService
+    ? peopleAhead * selectedService.expectedDuration
+    : 0;
 
   function validate() {
     const next: Record<string, string> = {};
@@ -49,15 +84,42 @@ function JoinQueue() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!validate()) return;
+    if (!validate() || !selectedService) return;
 
     setSubmitting(true);
     await joinQueue(serviceId);
+
+    setMyQueue((prev) => [
+      ...prev,
+      {
+        id: crypto.randomUUID(),
+        serviceName: selectedService.name,
+        date,
+        timeSlot,
+        position: peopleAhead + 1,
+        estimatedWaitMinutes: estimatedWait,
+      },
+    ]);
+
     push({
-      message: `Appointment requested for ${selectedService?.name} on ${date} at ${timeSlot}`,
+      message: `Appointment requested for ${selectedService.name} on ${date} at ${timeSlot}`,
       type: "queue_update",
     });
+
+    setServiceId("");
+    setDate("");
+    setTimeSlot("");
     setSubmitting(false);
+  }
+
+  function handleLeave(entry: MyQueueEntry) {
+    if (!window.confirm(`Leave the queue for ${entry.serviceName}?`)) return;
+
+    setMyQueue((prev) => prev.filter((q) => q.id !== entry.id));
+    push({
+      message: `You left the queue for ${entry.serviceName}`,
+      type: "queue_update",
+    });
   }
 
   return (
@@ -89,14 +151,24 @@ function JoinQueue() {
           </div>
 
           {selectedService && (
-            <p className="wait-estimate">
-              Estimated duration: {selectedService.expectedDuration} min ·{" "}
-              <span
-                className={`priority-pill priority-${selectedService.priority}`}
-              >
-                {selectedService.priority} priority
-              </span>
-            </p>
+            <div className="wait-estimate">
+              <p className="wait-estimate-main">
+                Estimated wait: <strong>~{estimatedWait} min</strong>
+                <span className="wait-estimate-ahead">
+                  {" "}
+                  ({peopleAhead} {peopleAhead === 1 ? "person" : "people"}{" "}
+                  ahead)
+                </span>
+              </p>
+              <p>
+                Appointment length: {selectedService.expectedDuration} min ·{" "}
+                <span
+                  className={`priority-pill priority-${selectedService.priority}`}
+                >
+                  {selectedService.priority} priority
+                </span>
+              </p>
+            </div>
           )}
 
           <div className="form-row">
@@ -167,6 +239,45 @@ function JoinQueue() {
           </button>
         </form>
       </div>
+
+      {isAuthenticated && (
+        <div className="my-queue-card">
+          <h2>Your Queue</h2>
+
+          {myQueue.length === 0 ? (
+            <p className="my-queue-empty">
+              You're not in any queues right now.
+            </p>
+          ) : (
+            <ul className="my-queue-list">
+              {myQueue.map((entry) => (
+                <li key={entry.id} className="my-queue-item">
+                  <div className="my-queue-info">
+                    <span className="my-queue-service">
+                      {entry.serviceName}
+                    </span>
+                    <span className="my-queue-meta">
+                      {entry.date} at {entry.timeSlot}
+                    </span>
+                    <span className="my-queue-meta">
+                      Position #{entry.position} · ~{entry.estimatedWaitMinutes}{" "}
+                      min wait
+                    </span>
+                  </div>
+
+                  <button
+                    type="button"
+                    className="leave-button"
+                    onClick={() => handleLeave(entry)}
+                  >
+                    Leave queue
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
     </div>
   );
 }
