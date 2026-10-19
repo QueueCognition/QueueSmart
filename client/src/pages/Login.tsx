@@ -4,10 +4,6 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useNotifications } from "../context/NotificationContext";
 import { AuthError } from "../services/authService";
-import {
-  ADMIN_CREDENTIALS,
-  DEMO_CREDENTIALS,
-} from "../services/mockAuthService";
 
 interface FieldErrors {
   email?: string;
@@ -151,14 +147,6 @@ function Login() {
             {submitting ? "Signing in…" : "Sign in"}
           </button>
         </form>
-
-        <p className="auth__hint">
-          Regular User: <strong>{DEMO_CREDENTIALS.email}</strong> /{" "}
-          <strong>{DEMO_CREDENTIALS.password}</strong>
-          <br />
-          Admin User: <strong>{ADMIN_CREDENTIALS.email}</strong> /{" "}
-          <strong>{ADMIN_CREDENTIALS.password}</strong>
-        </p>
 
         <footer className="auth__footer">
           <span>New to QueueSmart?</span>

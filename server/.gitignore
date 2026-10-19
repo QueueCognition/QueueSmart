@@ -9,5 +9,10 @@ pnpm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 coverage/
+data/
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
 .DS_Store
 Thumbs.db
