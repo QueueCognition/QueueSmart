@@ -1,1 +1,17 @@
 .vscode
+
+# Dependencies
+node_modules/
+
+# Generated build output
+dist/
+dist-ssr/
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
+npm-debug.log*
