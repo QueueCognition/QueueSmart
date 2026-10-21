@@ -62,3 +62,11 @@ export function updateService(
     body: JSON.stringify(service),
   })
 }
+
+export function deleteService(
+  id: number,
+): Promise<{ message: string }> {
+  return request<{ message: string }>(`${API_URL}/${id}`, {
+    method: 'DELETE',
+  })
+}

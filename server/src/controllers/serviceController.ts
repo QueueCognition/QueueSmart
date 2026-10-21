@@ -68,5 +68,37 @@ export function createServiceController(serviceService: ServiceService) {
     }
   }
 
-  return { listServices, createService, updateService }
+    function removeService(req: Request, res: Response): void {
+    const id = Number(req.params.id)
+
+    if (!Number.isSafeInteger(id) || id <= 0) {
+      res.status(400).json({
+        success: false,
+        errors: ['Service ID must be a positive integer.'],
+      })
+      return
+    }
+
+    const removed = serviceService.removeService(id)
+
+    if (!removed) {
+      res.status(404).json({
+        success: false,
+        errors: ['Service not found.'],
+      })
+      return
+    }
+
+    res.status(200).json({
+      success: true,
+      data: { message: 'Service deleted successfully.' },
+    })
+  }
+
+  return {
+  listServices,
+  createService,
+  updateService,
+  removeService,
+  }
 }

@@ -86,4 +86,19 @@ export class ServiceService {
 
     return { ...updated }
   }
+    removeService(id: number): boolean {
+    const exists = this.services.some(
+      (service) => service.id === id,
+    )
+
+    if (!exists) {
+      return false
+    }
+
+    this.services = this.services.filter(
+      (service) => service.id !== id,
+    )
+
+    return true
+  }
 }

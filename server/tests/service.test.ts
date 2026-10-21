@@ -105,4 +105,24 @@ describe('Service Management', () => {
       }),
     ).toBeUndefined()
   })
+  
+  it('removes an existing service', () => {
+    const serviceService = new ServiceService()
+
+    const removed = serviceService.removeService(1)
+
+    expect(removed).toBe(true)
+    expect(serviceService.listServices()).toHaveLength(2)
+    expect(
+      serviceService.listServices().some((service) => service.id === 1),
+    ).toBe(false)
+  })
+
+  it('returns false when removing a nonexistent service', () => {
+    const serviceService = new ServiceService()
+
+    expect(serviceService.removeService(999)).toBe(false)
+    expect(serviceService.listServices()).toHaveLength(3)
+  })
+
 })

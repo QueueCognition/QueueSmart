@@ -1,10 +1,10 @@
-
 import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import {
   getServices,
   createService,
   updateService,
+  deleteService,
 } from '../services/serviceApi'
 import type { Service, Priority } from '../services/serviceApi'
 import '../styles/servicemanagement.css'
@@ -143,6 +143,43 @@ function ServiceManagement() {
     setPriority(service.priority)
     setErrors({})
     setApiError('')
+  }
+
+  const handleRemove = async (id: number) => {
+    if (saving) {
+      return
+    }
+
+    const confirmed = window.confirm(
+      'Are you sure you want to remove this service?',
+    )
+
+    if (!confirmed) {
+      return
+    }
+
+    setSaving(true)
+    setApiError('')
+
+    try {
+      await deleteService(id)
+
+      setServices((currentServices) =>
+        currentServices.filter((service) => service.id !== id),
+      )
+
+      if (editingId === id) {
+        resetForm()
+      }
+    } catch (error: unknown) {
+      setApiError(
+        error instanceof Error
+          ? error.message
+          : 'Failed to remove the service.',
+      )
+    } finally {
+      setSaving(false)
+    }
   }
 
   return (
@@ -315,6 +352,15 @@ function ServiceManagement() {
                   disabled={saving}
                 >
                   Edit
+                </button>
+
+                <button
+                  type="button"
+                  className="service-action service-action--remove"
+                  onClick={() => handleRemove(service.id)}
+                  disabled={saving}
+                >
+                  {saving ? 'Please wait...' : 'Remove'}
                 </button>
               </div>
             </article>

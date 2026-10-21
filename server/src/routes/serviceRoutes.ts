@@ -10,6 +10,7 @@ export function createServiceRoutes(serviceService: ServiceService) {
   router.get('/', controller.listServices)
   router.post('/', controller.createService)
   router.put('/:id', controller.updateService)
+  router.delete('/:id', controller.removeService)
 
   return router
 }
