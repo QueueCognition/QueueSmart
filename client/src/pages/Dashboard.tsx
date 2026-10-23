@@ -10,7 +10,7 @@ import { useAuth } from "../context/AuthContext";
 function Dashboard() {
   const { user } = useAuth();
   const { notifications, markRead } = useNotifications();
-  const entry = useQueueStatus("q1");
+  const { entry, error: queueError, loading: queueLoading } = useQueueStatus();
 
   const [appointments, setAppointments] = useState<MockAppointment[]>([]);
 
@@ -57,8 +57,12 @@ function Dashboard() {
                 <strong>{entry.estimatedWaitMinutes} minutes</strong>
               </p>
             </>
-          ) : (
+          ) : queueError ? (
+            <p role="alert">{queueError}</p>
+          ) : queueLoading ? (
             <p>Loading your queue status...</p>
+          ) : (
+            <p>You are not currently in a queue.</p>
           )}
 
           <Link to="/schedule/queue-status" className="dashboard-link">

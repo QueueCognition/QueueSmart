@@ -9,9 +9,27 @@ import { AuthError } from "./authError";
 
 export { AuthError } from "./authError";
 
-export const API_BASE_URL: string = import.meta.env.VITE_API_BASE_URL;
+export const API_BASE_URL: string = (
+  import.meta.env.VITE_API_BASE_URL || "/api"
+).replace(/\/$/, "");
 
 const AUTH_BASE_URL = `${API_BASE_URL}/auth`;
+
+export const AUTH_SESSION_STORAGE_KEY = "queuesmart.auth.session";
+
+export function getStoredAccessToken(): string | null {
+  const raw =
+    localStorage.getItem(AUTH_SESSION_STORAGE_KEY) ??
+    sessionStorage.getItem(AUTH_SESSION_STORAGE_KEY);
+  if (!raw) return null;
+
+  try {
+    const session = JSON.parse(raw) as Partial<AuthSession>;
+    return typeof session.token === "string" ? session.token : null;
+  } catch {
+    return null;
+  }
+}
 
 interface ErrorPayload {
   message?: string;

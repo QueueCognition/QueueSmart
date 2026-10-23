@@ -43,3 +43,36 @@ export interface Notification {
   timestamp: string;
   read: boolean;
 }
+
+export interface QueueEntryRecord extends AdminQueueEntry {
+  userId: string;
+  priority: ServicePriority;
+  customerName: string;
+  customerEmail: string;
+  date: string; // YYYY-MM-DD
+  timeSlot: string;
+  ticketNumber: string;
+}
+
+export interface WaitEstimate {
+  serviceId: string;
+  waitingCount: number;
+  expectedDuration: number;
+  estimatedWaitMinutes: number;
+}
+
+export interface ServeNextResult {
+  served: QueueEntryRecord;
+  nextUp: QueueEntryRecord | null;
+}
+
+export interface QueueSummaryRecord extends AdminServiceQueueSummary {
+  waitingList: QueueEntryRecord[];
+}
+
+export interface PublicQueueRow {
+  position: number;
+  patient: string;
+  date: string;
+  timeSlot: string;
+}

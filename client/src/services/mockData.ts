@@ -1,4 +1,4 @@
-import type { Service, QueueEntry } from "../types/queue";
+import type { Service } from "../types/queue";
 
 export const mockServices: Service[] = [
   {
@@ -23,16 +23,6 @@ export const mockServices: Service[] = [
     priority: "high",
   },
 ];
-
-export const mockQueueEntry: QueueEntry = {
-  id: "q1",
-  serviceId: "s1",
-  position: 3,
-  estimatedWaitMinutes: 12,
-  status: "waiting",
-  joinedAt: new Date().toISOString(),
-};
-
 
 export type AppointmentStatus = "upcoming" | "completed" | "cancelled";
 

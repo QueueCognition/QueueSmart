@@ -40,6 +40,7 @@ describe("verifyToken", () => {
 
   it("rejects a tampered payload", () => {
     const [header, payload, signature] = issued().token.split(".");
+    assert.ok(payload);
     const claims = JSON.parse(
       Buffer.from(payload, "base64url").toString("utf8"),
     ) as { role: string };
