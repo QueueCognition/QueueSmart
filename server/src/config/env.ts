@@ -23,7 +23,18 @@ function readTtlSeconds(value: string, fallback: number): number {
     const seconds = Number(value);
     return Number.isInteger(seconds) && seconds > 0 ? seconds : fallback;
   }
-  return Number(match[1]) * UNIT_SECONDS[match[2]];
+  const amount = match[1];
+  const unit = match[2];
+
+  if (
+    amount === undefined ||
+    unit === undefined ||
+    UNIT_SECONDS[unit] === undefined
+  ) {
+    throw new Error("Invalid duration format");
+  }
+
+  return Number(amount) * UNIT_SECONDS[unit];
 }
 
 const nodeEnv = readString("NODE_ENV", "development");

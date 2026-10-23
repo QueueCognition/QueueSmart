@@ -96,7 +96,6 @@ function Dashboard() {
             View calendar →
           </Link>
         </section>
-        
         <section className="dashboard-card">
           <h2>Past Appointments</h2>
 

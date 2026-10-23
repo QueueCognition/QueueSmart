@@ -55,6 +55,15 @@ export function verifyToken(token: string, secret: string): TokenClaims {
   if (segments.length !== 3) throw new Error("Malformed token");
 
   const [headerSegment, payloadSegment, signatureSegment] = segments;
+
+  if (
+    headerSegment === undefined ||
+    payloadSegment === undefined ||
+    signatureSegment === undefined
+  ) {
+    throw new Error("Malformed token");
+  }
+
   if (headerSegment !== HEADER_SEGMENT) {
     throw new Error("Unsupported token header");
   }
