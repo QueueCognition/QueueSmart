@@ -142,6 +142,41 @@ describe("reading and leaving entries", () => {
     expect(res.body[0].userId).toBe("user-a");
   });
 
+  it("returns only the caller's completed and cancelled history", async () => {
+    await request(app)
+      .post("/api/queue/join")
+      .set(actingAs("user-a"))
+      .send(joinBody());
+
+    await request(app)
+      .post("/api/admin/queues/1/serve-next")
+      .set(actingAs("staff-1", "staff"));
+
+    const userBEntry = await request(app)
+      .post("/api/queue/join")
+      .set(actingAs("user-b"))
+      .send(joinBody());
+
+    await request(app)
+      .delete(`/api/queue/${userBEntry.body.id}`)
+      .set(actingAs("user-b"));
+
+    const res = await request(app)
+      .get("/api/queue/history")
+      .set(actingAs("user-a"));
+
+    expect(res.status).toBe(200);
+    expect(res.body).toHaveLength(1);
+    expect(res.body[0].userId).toBe("user-a");
+    expect(res.body[0].status).toBe("served");
+  });
+
+  it("requires authentication to access history", async () => {
+    const res = await request(app).get("/api/queue/history");
+
+    expect(res.status).toBe(401);
+  });
+
   it("lets the owner read an entry, but not other users", async () => {
     const joined = await request(app)
       .post("/api/queue/join")

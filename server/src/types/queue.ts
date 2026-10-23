@@ -52,6 +52,7 @@ export interface QueueEntryRecord extends AdminQueueEntry {
   date: string; // YYYY-MM-DD
   timeSlot: string;
   ticketNumber: string;
+  updatedAt: string;
 }
 
 export interface WaitEstimate {

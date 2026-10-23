@@ -39,6 +39,7 @@ function closeEntry(entry: QueueEntryRecord, status: "served" | "cancelled"): vo
   entry.status = status;
   entry.position = 0;
   entry.estimatedWaitMinutes = 0;
+  entry.updatedAt = new Date().toISOString();
 }
 
 function ticketPrefix(service: Service): string {
@@ -112,13 +113,16 @@ export class QueueService {
       throw new HttpError(409, "You are already in the queue for this service");
     }
 
+    const now = new Date().toISOString();
+
     const entry: QueueEntryRecord = {
       id: randomUUID(),
       serviceId: service.id,
       position: 0, 
       estimatedWaitMinutes: 0,
       status: "waiting",
-      joinedAt: new Date().toISOString(),
+      joinedAt: now,
+      updatedAt: now,
       priority: service.priority,
       userId,
       customerName: input.customerName,
@@ -162,6 +166,17 @@ export class QueueService {
       .filter((e) => e.userId === userId && isActive(e))
       .sort((a, b) => new Date(a.joinedAt).getTime() - new Date(b.joinedAt).getTime())
       .map((e) => ({ ...e }));
+  }
+
+  getHistoryForUser(userId: string): QueueEntryRecord[] {
+    return listEntries()
+      .filter((entry) => entry.userId === userId)
+      .sort(
+        (a, b) =>
+          new Date(b.updatedAt).getTime() -
+          new Date(a.updatedAt).getTime()
+      )
+      .map((entry) => ({ ...entry }));
   }
 
   async getWaitEstimate(serviceId: string): Promise<WaitEstimate> {

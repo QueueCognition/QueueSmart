@@ -6,6 +6,8 @@ import { mockServices, type MockAppointment } from "../services/mockData";
 import "../styles/dashboard.css";
 import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { getQueueHistory, getServices} from "../services/queueService"; 
+import type { QueueEntry, Service } from "../types/queue";
 
 function Dashboard() {
   const { user } = useAuth();
@@ -13,11 +15,71 @@ function Dashboard() {
   const { entry, error: queueError, loading: queueLoading } = useQueueStatus();
 
   const [appointments, setAppointments] = useState<MockAppointment[]>([]);
+  const [queueHistory, setQueueHistory] = useState<QueueEntry[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(true);
+  const [historyError, setHistoryError] = useState("");
+  const [services, setServices] = useState<Service[]>([]);
 
   useEffect(() => {
     if (!user) return;
 
     getAppointments(user.id).then(setAppointments);
+  }, [user]);
+
+
+  useEffect(() => {
+    if (!user) return;
+
+    let active = true;
+
+    async function loadQueueHistory() {
+      try {
+        const history = await getQueueHistory();
+
+        if (active) {
+          setQueueHistory(history);
+          setHistoryError("");
+        }
+      } catch (cause) {
+        if (active) {
+          setHistoryError(
+            cause instanceof Error
+              ? cause.message
+              : "Failed to load queue history.",
+          );
+        }
+      } finally {
+        if (active) {
+          setHistoryLoading(false);
+        }
+      }
+    }
+
+    void loadQueueHistory();
+
+    return () => {
+      active = false;
+    };
+  }, [user]);
+
+  useEffect(() => {
+    if (!user) return;
+
+    let active = true;
+
+    getServices()
+      .then((loadedServices) => {
+        if (active) {
+          setServices(loadedServices);
+        }
+      })
+      .catch((error) => {
+        console.error("Failed to load services:", error);
+      });
+
+    return () => {
+      active = false;
+    };
   }, [user]);
 
   const todayString = new Date().toISOString().split("T")[0];
@@ -100,35 +162,43 @@ function Dashboard() {
             View calendar →
           </Link>
         </section>
-        <section className="dashboard-card">
-          <h2>Past Appointments</h2>
 
-          <ul className="dashboard-services">
-            {appointments
-              .filter((appointment) => appointment.status === "completed")
-              .sort((a, b) =>
-                `${b.date} ${b.time}`.localeCompare(
-                  `${a.date} ${a.time}`,
-                ),
-              )
-              .map((appointment) => {
-                const service = mockServices.find(
-                  (service) => service.id === appointment.serviceId,
+        <section className="dashboard-card">
+          <h2>Queue History</h2>
+
+          {historyLoading ? (
+            <p>Loading queue history...</p>
+          ) : historyError ? (
+            <p role="alert">{historyError}</p>
+          ) : queueHistory.length === 0 ? (
+            <p>No queue history yet.</p>
+          ) : (
+            <ul className="dashboard-services">
+              {queueHistory.map((item) => {
+                const service = services.find(
+                  (service) => service.id === item.serviceId,
                 );
 
                 return (
-                  <li key={appointment.id}>
-                    <strong>{service?.name}</strong>
+                  <li key={item.id}>
+                    <strong>{service?.name ?? `Service ${item.serviceId}`}</strong>
                     <br />
-                    {appointment.date} at {appointment.time}
+                    {item.date ?? "Date unavailable"}
+                    {item.timeSlot ? ` at ${item.timeSlot}` : ""}
+                    <br />
+                    Status:{" "}
+                    <span>
+                      {item.status === "served"
+                        ? "Completed"
+                        : item.status === "cancelled"
+                          ? "Cancelled"
+                          : "Joined"}
+                    </span>
                   </li>
                 );
               })}
-          </ul>
-
-          {appointments.filter(
-            (appointment) => appointment.status === "completed",
-          ).length === 0 && <p>No past appointments.</p>}
+            </ul>
+          )}
         </section>
 
         <section className="dashboard-card dashboard-card--full">

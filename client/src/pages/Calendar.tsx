@@ -1,19 +1,33 @@
 import { useEffect, useState } from "react";
 import "../styles/calendar.css";
 import { useAuth } from "../context/AuthContext";
-import { getAppointments } from "../services/appointmentService";
-import type { MockAppointment } from "../services/mockData";
-import { mockServices } from "../services/mockData";
+import { getQueueHistory, getServices } from "../services/queueService";
+import type { QueueEntry, Service } from "../types/queue";
 
 function Calendar() {
   const { user } = useAuth();
 
-  const [appointments, setAppointments] = useState<MockAppointment[]>([]);
+  const [history, setHistory] = useState<QueueEntry[]>([]);
+  const [services, setServices] = useState<Service[]>([]);
 
   useEffect(() => {
     if (!user) return;
 
-    getAppointments(user.id).then(setAppointments);
+    getQueueHistory()
+      .then(setHistory)
+      .catch((error) => {
+        console.error("Failed to load queue history:", error);
+      });
+  }, [user]);
+
+  useEffect(() => {
+    if (!user) return;
+
+    getServices()
+      .then(setServices)
+      .catch((error) => {
+        console.error("Failed to load services:", error);
+      });
   }, [user]);
 
 
@@ -73,7 +87,7 @@ function Calendar() {
 
   const weekdays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
-  function getAppointmentsForDay(day: number) {
+  function getHistoryForDay(day: number) {
     const date = new Date(
       currentMonth.getFullYear(),
       currentMonth.getMonth(),
@@ -86,8 +100,8 @@ function Calendar() {
       String(date.getDate()).padStart(2, "0"),
     ].join("-");
 
-    return appointments.filter(
-      (appointment) => appointment.date === dateString,
+    return history.filter(
+      (entry) => entry.date === dateString,
     );
   }
 
@@ -165,8 +179,7 @@ function Calendar() {
         ))}
 
         {calendarDays.map((day, index) => {
-          const dayAppointments =
-            day !== null ? getAppointmentsForDay(day) : [];
+          const dayHistory = day !== null ? getHistoryForDay(day) : [];
 
           return (
             <div
@@ -184,18 +197,26 @@ function Calendar() {
                   <span className="calendar-date">{day}</span>
 
                   <div className="calendar-appointments">
-                    {dayAppointments.map((appointment) => {
-                      const service = mockServices.find(
-                        (service) => service.id === appointment.serviceId,
+                    {dayHistory.map((entry) => {
+                      const service = services.find(
+                        (service) => service.id === entry.serviceId,
                       );
+
+                      const status =
+                        entry.status === "served"
+                          ? "completed"
+                          : entry.status === "cancelled"
+                            ? "cancelled"
+                            : "joined";
 
                       return (
                         <div
-                          className={`calendar-appointment calendar-appointment--${appointment.status}`}
-                          key={appointment.id}
+                          className={`calendar-appointment calendar-appointment--${status}`}
+                          key={entry.id}
                         >
-                          <strong>{appointment.time}</strong>
-                          <span>{service?.name}</span>
+                          <strong>{entry.timeSlot}</strong>
+                          <span>{service?.name ?? `Service ${entry.serviceId}`}</span>
+                          <span>{status.charAt(0).toUpperCase() + status.slice(1)}</span>
                         </div>
                       );
                     })}

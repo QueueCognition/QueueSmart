@@ -105,6 +105,10 @@ export function getMyQueue(): Promise<QueueEntry[]> {
   return request<QueueEntry[]>(QUEUE_URL, "/mine");
 }
 
+export function getQueueHistory(): Promise<QueueEntry[]> {
+  return request<QueueEntry[]>(QUEUE_URL, "/history");
+}
+
 export function leaveQueue(entryId: string): Promise<QueueEntry> {
   return request<QueueEntry>(
     QUEUE_URL,

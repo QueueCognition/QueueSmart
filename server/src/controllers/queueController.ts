@@ -31,6 +31,11 @@ export function createQueueController(queueService: QueueService) {
     res.json(queueService.listForUser(currentUser(res).id));
   };
 
+  const getHistory: RequestHandler = (_req, res) => {
+    const user = currentUser(res);
+    res.json(queueService.getHistoryForUser(user.id));
+  };
+
   const getOne: RequestHandler = (req, res) => {
     const user = currentUser(res);
     res.json(queueService.getEntry(routeParam(req, "entryId"), user.id));
@@ -61,6 +66,7 @@ export function createQueueController(queueService: QueueService) {
     join,
     leave,
     getMine,
+    getHistory,
     getOne,
     getWaitTime,
     getBoard,

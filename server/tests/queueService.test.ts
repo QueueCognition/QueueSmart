@@ -190,6 +190,36 @@ describe("reading entries", () => {
     expect(queue.listForUser("user-1")).toHaveLength(0);
   });
 
+  it("returns the user's completed and cancelled entries as history", async () => {
+    await queue.join("user-1", joinInput());
+    await queue.serveNext("s1");
+
+    const cancelled = await queue.join(
+      "user-1",
+      joinInput({ serviceId: "s2" }),
+    );
+    await queue.leave(cancelled.id, "user-1");
+
+    const history = queue.getHistoryForUser("user-1");
+
+    expect(history).toHaveLength(2);
+    expect(history.map((entry) => entry.status)).toContain("served");
+    expect(history.map((entry) => entry.status)).toContain("cancelled");
+  });
+
+  it("returns only the requesting user's history", async () => {
+    const user1Entry = await queue.join("user-1", joinInput());
+    const user2Entry = await queue.join("user-2", joinInput());
+
+    await queue.leave(user1Entry.id, "user-1");
+    await queue.leave(user2Entry.id, "user-2");
+
+    const history = queue.getHistoryForUser("user-1");
+
+    expect(history).toHaveLength(1);
+    expect(history[0]?.userId).toBe("user-1");
+  });
+
   it("lets the owner read an entry but not other users", async () => {
     const entry = await queue.join("user-1", joinInput());
     expect(queue.getEntry(entry.id, "user-1").id).toBe(entry.id);
@@ -277,6 +307,7 @@ describe("queue ordering", () => {
       estimatedWaitMinutes: 0,
       status: "waiting",
       joinedAt: "2026-10-22T09:00:00.000Z",
+      updatedAt: "2026-10-22T09:00:00.000Z",
       priority: "low",
       userId: "u",
       customerName: "n",

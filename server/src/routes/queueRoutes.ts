@@ -13,6 +13,7 @@ export function createQueueRoutes(queueService: QueueService) {
 
   router.post("/join", requireAuth, controller.join);
   router.get("/mine", requireAuth, controller.getMine);
+  router.get("/history", requireAuth, controller.getHistory);
   router.get("/:entryId", requireAuth, controller.getOne);
   router.delete("/:entryId", requireAuth, controller.leave);
 
