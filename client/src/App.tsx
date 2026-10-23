@@ -82,9 +82,15 @@ function App() {
               }
             />
 
-            {/* Darshan's A2 admin screens */}
             <Route path="/admin/services" element={<ServiceManagement />} />
-            <Route path="/admin/queues" element={<QueueManagement />} />
+            <Route
+              path="/admin/queues"
+              element={
+                <ProtectedRoute minRole="staff">
+                  <QueueManagement />
+                </ProtectedRoute>
+              }
+            />
 
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>

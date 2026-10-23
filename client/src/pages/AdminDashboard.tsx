@@ -4,12 +4,9 @@ import { useAuth } from "../context/AuthContext";
 import { useNotifications } from "../context/NotificationContext";
 import {
   getAdminServiceWaitSummaries,
-  toggleAdminServiceAvailability,
-  updateAdminQueueStatus,
-  type AdminQueueEntry,
+  serveNextInQueue,
   type AdminServiceQueueSummary,
 } from "../services/adminQueueService";
-import type { QueueStatus } from "../types/queue";
 import "../styles/admin-dashboard.css";
 
 function AdminDashboard() {
@@ -37,6 +34,7 @@ function AdminDashboard() {
 
   useEffect(() => {
     let mounted = true;
+    let refreshErrorNotified = false;
 
     void getAdminServiceWaitSummaries()
       .then((data) => {
@@ -55,11 +53,22 @@ function AdminDashboard() {
       });
 
     const interval = setInterval(() => {
-      void getAdminServiceWaitSummaries().then((data) => {
-        if (!mounted) return;
-        setSummaries(data);
-        setLastRefreshed(new Date());
-      });
+      void getAdminServiceWaitSummaries()
+        .then((data) => {
+          if (!mounted) return;
+          setSummaries(data);
+          setLastRefreshed(new Date());
+          refreshErrorNotified = false;
+        })
+        .catch(() => {
+          if (mounted && !refreshErrorNotified) {
+            push({
+              message: "Failed to refresh queue summaries.",
+              type: "status_change",
+            });
+            refreshErrorNotified = true;
+          }
+        });
     }, 5000);
 
     return () => {
@@ -68,38 +77,11 @@ function AdminDashboard() {
     };
   }, [push]);
 
-  const handleToggleAvailability = async (
-    serviceId: string,
-    serviceName: string,
-  ) => {
+  const handleServeNext = async (serviceId: string, serviceName: string) => {
     try {
-      const isAvailable = await toggleAdminServiceAvailability(serviceId);
+      const result = await serveNextInQueue(serviceId);
       push({
-        message: `${serviceName} status updated to ${isAvailable ? "Available" : "Paused"}.`,
-        type: "status_change",
-      });
-      refreshDashboard();
-    } catch {
-      push({
-        message: `Failed to update status for ${serviceName}.`,
-        type: "status_change",
-      });
-    }
-  };
-
-  const handleUpdateStatus = async (
-    entry: AdminQueueEntry,
-    nextStatus: QueueStatus,
-    serviceName: string,
-  ) => {
-    try {
-      await updateAdminQueueStatus(entry.id, nextStatus);
-      const label =
-        nextStatus === "almost_ready"
-          ? "called for service"
-          : "marked as served";
-      push({
-        message: `${entry.customerName || entry.ticketNumber} ${label} for ${serviceName}.`,
+        message: `${result.served.customerName || result.served.ticketNumber || "The next customer"} was served for ${serviceName}.`,
         type: "queue_update",
       });
       refreshDashboard();
@@ -113,7 +95,7 @@ function AdminDashboard() {
 
   const totalServices = summaries.length;
   const availableServices = summaries.filter(
-    (item) => (item.service as { isAvailable?: boolean }).isAvailable !== false,
+    (item) => item.service.isAvailable !== false,
   );
   const totalPeopleWaiting = summaries.reduce(
     (total, item) => total + item.waitingCount,
@@ -241,7 +223,7 @@ function AdminDashboard() {
             {summaries.map(
               ({ service, waitingCount, estimatedWaitMinutes }) => {
                 const isAvailable =
-                  (service as { isAvailable?: boolean }).isAvailable !== false;
+                  service.isAvailable !== false;
                 return (
                   <div key={service.id} className="admin-service-card">
                     <div className="admin-service-card-top">
@@ -284,15 +266,6 @@ function AdminDashboard() {
                         <strong>{estimatedWaitMinutes} min</strong>
                       </div>
 
-                      <button
-                        type="button"
-                        className="admin-btn admin-btn-secondary admin-btn-sm"
-                        onClick={() =>
-                          handleToggleAvailability(service.id, service.name)
-                        }
-                      >
-                        {isAvailable ? "Pause" : "Activate"}
-                      </button>
                     </div>
                   </div>
                 );
@@ -448,14 +421,16 @@ function AdminDashboard() {
                                   type="button"
                                   className="admin-btn admin-btn-sm admin-btn-primary"
                                   onClick={() =>
-                                    handleUpdateStatus(
-                                      entry,
-                                      "served",
-                                      service.name,
-                                    )
+                                    handleServeNext(service.id, service.name)
+                                  }
+                                  disabled={entry.position !== 1}
+                                  title={
+                                    entry.position === 1
+                                      ? "Serve the next person in this queue"
+                                      : "Only the next person can be served"
                                   }
                                 >
-                                  Mark Served
+                                  Serve Next
                                 </button>
                               </td>
                             </tr>

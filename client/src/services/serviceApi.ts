@@ -1,4 +1,6 @@
 
+import { API_BASE_URL } from "./authService";
+
 export type Priority = 'low' | 'medium' | 'high'
 
 export type Service = {
@@ -15,7 +17,7 @@ type ApiResponse<T> = {
   errors?: string[]
 }
 
-const API_URL = 'http://localhost:3000/api/services'
+const API_URL = `${API_BASE_URL.replace(/\/$/, '')}/services`
 
 async function request<T>(
   url: string,

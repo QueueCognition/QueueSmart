@@ -1,26 +1,50 @@
 import { useEffect, useState } from "react";
+import { useAuth } from "../context/AuthContext";
 import type { QueueEntry } from "../types/queue";
-import { getQueueStatus } from "../services/queueService";
+import { getMyQueue } from "../services/queueService";
 
-export function useQueueStatus(entryId: string) {
+export function useQueueStatus() {
+  const { isAuthenticated } = useAuth();
   const [entry, setEntry] = useState<QueueEntry | null>(null);
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    let active = true;
+    if (!isAuthenticated) return;
 
-    async function fetchStatus() {
-      const data = await getQueueStatus(entryId);
-      if (active) setEntry(data);
+    let active = true;
+    async function refresh() {
+      try {
+        const entries = await getMyQueue();
+        if (active) {
+          setEntry(entries[0] ?? null);
+          setError("");
+          setLoading(false);
+        }
+      } catch (cause) {
+        if (active) {
+          setError(
+            cause instanceof Error
+              ? cause.message
+              : "Failed to load your queue status.",
+          );
+          setLoading(false);
+        }
+      }
     }
 
-    fetchStatus(); // fetch immediately on mount
-    const interval = setInterval(fetchStatus, 5000);
+    void refresh();
+    const interval = window.setInterval(() => void refresh(), 5000);
 
     return () => {
       active = false;
-      clearInterval(interval);
+      window.clearInterval(interval);
     };
-  }, [entryId]);
+  }, [isAuthenticated]);
 
-  return entry;
+  return {
+    entry: isAuthenticated ? entry : null,
+    error: isAuthenticated ? error : "",
+    loading: isAuthenticated && loading,
+  };
 }

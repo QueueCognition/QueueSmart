@@ -17,8 +17,6 @@ import type {
 import * as authService from "../services/authService";
 import { AuthError } from "../services/authError";
 
-const STORAGE_KEY = "queuesmart.auth.session";
-
 interface AuthContextValue {
   user: User | null;
   isAuthenticated: boolean;
@@ -33,7 +31,8 @@ const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 function readStoredSession(): AuthSession | null {
   const raw =
-    localStorage.getItem(STORAGE_KEY) ?? sessionStorage.getItem(STORAGE_KEY);
+    localStorage.getItem(authService.AUTH_SESSION_STORAGE_KEY) ??
+    sessionStorage.getItem(authService.AUTH_SESSION_STORAGE_KEY);
   if (!raw) return null;
 
   try {
@@ -52,14 +51,14 @@ function readStoredSession(): AuthSession | null {
 function persistSession(session: AuthSession, remember: boolean) {
   clearStoredSession();
   (remember ? localStorage : sessionStorage).setItem(
-    STORAGE_KEY,
+    authService.AUTH_SESSION_STORAGE_KEY,
     JSON.stringify(session),
   );
 }
 
 function clearStoredSession() {
-  localStorage.removeItem(STORAGE_KEY);
-  sessionStorage.removeItem(STORAGE_KEY);
+  localStorage.removeItem(authService.AUTH_SESSION_STORAGE_KEY);
+  sessionStorage.removeItem(authService.AUTH_SESSION_STORAGE_KEY);
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {

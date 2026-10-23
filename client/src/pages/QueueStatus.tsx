@@ -1,35 +1,82 @@
 import "../styles/queuestatus.css";
+import { useEffect, useState } from "react";
 import { useQueueStatus } from "../hooks/useQueueStatus";
 import { useAuth } from "../context/AuthContext";
+import {
+  getPublicQueueBoard,
+  getServices,
+} from "../services/queueService";
+import type { PublicQueueRow, Service } from "../types/queue";
 
 const STAGES = ["waiting", "almost_ready", "served"];
 
-// Same people and order as initialQueue in QueueManagement.tsx
-const demoQueue = [
-  { id: 1, firstName: "Alex", lastName: "Johnson", waitTime: 5 },
-  { id: 2, firstName: "Maria", lastName: "Garcia", waitTime: 12 },
-  { id: 3, firstName: "Demo", lastName: "User", waitTime: 20 },
-  { id: 4, firstName: "Sarah", lastName: "Lee", waitTime: 28 },
-];
-
-// "Alex Johnson" -> "Ale J."
-function formatPatientName(firstName: string, lastName: string): string {
-  return `${firstName.slice(0, 3)} ${lastName.charAt(0).toUpperCase()}.`;
-}
-
-// Appointment time = now + estimated wait, e.g. "9:12 AM"
-function appointmentTime(waitMinutes: number): string {
-  return new Date(Date.now() + waitMinutes * 60 * 1000).toLocaleTimeString([], {
-    hour: "numeric",
-    minute: "2-digit",
-  });
-}
-
 function QueueStatus() {
   const { isAuthenticated } = useAuth();
-  const entry = useQueueStatus("q1");
+  const { entry, error: statusError, loading: statusLoading } = useQueueStatus();
+  const [services, setServices] = useState<Service[]>([]);
+  const [serviceId, setServiceId] = useState("");
+  const [board, setBoard] = useState<PublicQueueRow[]>([]);
+  const [boardError, setBoardError] = useState("");
+  const [boardLoadedFor, setBoardLoadedFor] = useState("");
+
+  useEffect(() => {
+    let active = true;
+    getServices()
+      .then((data) => {
+        if (!active) return;
+        setServices(data);
+        setServiceId((current) => current || data[0]?.id || "");
+      })
+      .catch((error: unknown) => {
+        if (active) {
+          setBoardError(
+            error instanceof Error ? error.message : "Failed to load services.",
+          );
+        }
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const boardServiceId = entry?.serviceId ?? serviceId;
+
+  useEffect(() => {
+    if (!boardServiceId) return;
+
+    let active = true;
+    async function refreshBoard() {
+      try {
+        const rows = await getPublicQueueBoard(boardServiceId);
+        if (active) {
+          setBoard(rows);
+          setBoardError("");
+          setBoardLoadedFor(boardServiceId);
+        }
+      } catch (error) {
+        if (active) {
+          setBoardError(
+            error instanceof Error ? error.message : "Failed to load the queue.",
+          );
+          setBoardLoadedFor(boardServiceId);
+        }
+      }
+    }
+
+    void refreshBoard();
+    const interval = window.setInterval(() => void refreshBoard(), 5000);
+    return () => {
+      active = false;
+      window.clearInterval(interval);
+    };
+  }, [boardServiceId]);
 
   const currentStageIndex = entry ? STAGES.indexOf(entry.status) : -1;
+  const selectedService = services.find(
+    (service) => service.id === boardServiceId,
+  );
+  const boardLoading =
+    Boolean(boardServiceId) && boardLoadedFor !== boardServiceId;
 
   return (
     <div className="queue-status-page">
@@ -37,8 +84,12 @@ function QueueStatus() {
         <div className="status-card">
           <h1>Your Queue Status</h1>
 
-          {!entry ? (
+          {statusLoading ? (
             <p>Loading your queue status...</p>
+          ) : statusError ? (
+            <p role="alert">{statusError}</p>
+          ) : !entry ? (
+            <p>You are not currently in a queue.</p>
           ) : (
             <>
               <div className="status-position-circle">
@@ -60,7 +111,8 @@ function QueueStatus() {
               </div>
 
               <p className="wait-time">
-                Estimated wait: <strong>{entry.estimatedWaitMinutes} min</strong>
+                Estimated wait:{" "}
+                <strong>{entry.estimatedWaitMinutes} min</strong>
               </p>
             </>
           )}
@@ -68,26 +120,54 @@ function QueueStatus() {
       )}
 
       <div className="queue-table-card">
-        <h2>Today's Queue</h2>
-
-        <table className="queue-table">
-          <thead>
-            <tr>
-              <th>Time of appointment</th>
-              <th>Patient</th>
-              <th>Position</th>
-            </tr>
-          </thead>
-          <tbody>
-            {demoQueue.map((row, index) => (
-              <tr key={row.id}>
-                <td>{appointmentTime(row.waitTime)}</td>
-                <td>{formatPatientName(row.firstName, row.lastName)}</td>
-                <td>#{index + 1}</td>
-              </tr>
+        <h2>Current Queue</h2>
+        <label htmlFor="board-service">Service</label>{" "}
+        {entry ? (
+          <strong>{selectedService?.name ?? entry.serviceId}</strong>
+        ) : (
+          <select
+            id="board-service"
+            value={serviceId}
+            onChange={(event) => setServiceId(event.target.value)}
+          >
+            {services.map((service) => (
+              <option key={service.id} value={service.id}>
+                {service.name}
+              </option>
             ))}
-          </tbody>
-        </table>
+          </select>
+        )}
+
+        {boardError && <p role="alert">{boardError}</p>}
+        {!boardServiceId && !boardError ? (
+          <p>No services are available.</p>
+        ) : boardLoading ? (
+          <p>Loading queue...</p>
+        ) : (
+          <table className="queue-table">
+            <thead>
+              <tr>
+                <th>Time slot</th>
+                <th>Patient</th>
+                <th>Position</th>
+              </tr>
+            </thead>
+            <tbody>
+              {board.map((row) => (
+                <tr key={`${row.position}-${row.patient}-${row.timeSlot}`}>
+                  <td>{row.timeSlot}</td>
+                  <td>{row.patient}</td>
+                  <td>#{row.position}</td>
+                </tr>
+              ))}
+              {board.length === 0 && (
+                <tr>
+                  <td colSpan={3}>No one is currently waiting.</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        )}
       </div>
     </div>
   );

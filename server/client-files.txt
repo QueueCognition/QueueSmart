@@ -1,0 +1,453 @@
+﻿// ===== C:\Users\kiral\OneDrive\Documents\GitHub\QueueSmart\server\src\services\authService.ts =====
+import { randomUUID } from "node:crypto";
+import { config } from "../config/env";
+import {
+  PASSWORD_RESET_COOLDOWN_SECONDS,
+  recordResetRequest,
+  remainingCooldownSeconds,
+} from "../models/passwordResetStore";
+import {
+  findUserByEmail,
+  findUserById,
+  insertUser,
+  toPublicUser,
+  type StoredUser,
+} from "../models/userStore";
+import type {
+  AuthSession,
+  LoginInput,
+  PasswordResetResult,
+  RegisterInput,
+  User,
+} from "../types/auth";
+import { AuthError } from "../utils/errors";
+import { verifyPassword } from "../utils/password";
+import { issueToken, verifyToken } from "../utils/token";
+
+const INVALID_SESSION_MESSAGE = "Invalid or expired session. Please sign in again.";
+const NETWORK_CHANGED_MESSAGE =
+  "Your session ended because your network address changed. Please sign in again.";
+
+function createSession(user: StoredUser, boundIp: string | null): AuthSession {
+  const { token, expiresAt } = issueToken(
+    user.id,
+    user.role,
+    boundIp,
+    config.jwtSecret,
+    config.tokenTtlSeconds,
+  );
+
+  return { user: toPublicUser(user), token, expiresAt, boundIp };
+}
+
+export async function login(
+  input: LoginInput,
+  boundIp: string | null,
+): Promise<AuthSession> {
+  const user = findUserByEmail(input.email);
+  if (!user || !verifyPassword(input.password, user.passwordHash)) {
+    throw new AuthError("Incorrect email or password", 401);
+  }
+
+  return createSession(user, boundIp);
+}
+
+export async function register(
+  input: RegisterInput,
+  boundIp: string | null,
+): Promise<AuthSession> {
+  if (findUserByEmail(input.email)) {
+    throw new AuthError("An account with this email already exists", 409);
+  }
+
+  const user = insertUser({
+    id: `u_${randomUUID().slice(0, 8)}`,
+    firstName: input.firstName,
+    lastName: input.lastName,
+    email: input.email,
+    password: input.password,
+    role: "user",
+  });
+
+  return createSession(user, boundIp);
+}
+
+export async function requestPasswordReset(
+  email: string,
+): Promise<PasswordResetResult> {
+  const waitSeconds = remainingCooldownSeconds(email);
+  if (waitSeconds > 0) {
+    throw new AuthError(
+      `Please wait ${waitSeconds}s before requesting another reset link`,
+      429,
+    );
+  }
+
+  recordResetRequest(email);
+  return { retryAfterSeconds: PASSWORD_RESET_COOLDOWN_SECONDS };
+}
+
+export async function verifySession(
+  token: string,
+  boundIp: string | null,
+): Promise<User> {
+  let claims;
+
+  try {
+    claims = verifyToken(token, config.jwtSecret);
+  } catch {
+    throw new AuthError(INVALID_SESSION_MESSAGE, 401);
+  }
+
+  if (claims.ip && boundIp && claims.ip !== boundIp) {
+    throw new AuthError(NETWORK_CHANGED_MESSAGE, 401);
+  }
+
+  const user = findUserById(claims.sub);
+  if (!user) throw new AuthError(INVALID_SESSION_MESSAGE, 401);
+
+  return toPublicUser(user);
+}
+// ===== C:\Users\kiral\OneDrive\Documents\GitHub\QueueSmart\server\src\services\queueCatalog.ts =====
+import type { Service as ManagedService } from "../models/service";
+import type { Service } from "../types/queue";
+import type { ServiceCatalog } from "./queueService";
+import type { ServiceService } from "./serviceService";
+
+function toQueueService(service: ManagedService): Service {
+  return {
+    id: String(service.id),
+    name: service.name,
+    description: service.description,
+    expectedDuration: service.duration,
+    priority: service.priority,
+    isAvailable: true, 
+  };
+}
+
+export function createQueueCatalog(serviceService: ServiceService): ServiceCatalog {
+  return {
+    list: () => serviceService.listServices().map(toQueueService),
+    find: (serviceId) => {
+      const match = serviceService
+        .listServices()
+        .find((service) => String(service.id) === serviceId);
+      return match ? toQueueService(match) : undefined;
+    },
+  };
+}
+// ===== C:\Users\kiral\OneDrive\Documents\GitHub\QueueSmart\server\src\services\queueService.ts =====
+import { randomUUID } from "node:crypto";
+import { insertEntry, listEntries, nextTicketSequence } from "../models/queueStore";
+import type {
+  PublicQueueRow,
+  QueueEntryRecord,
+  QueueSummaryRecord,
+  ServeNextResult,
+  Service,
+  ServicePriority,
+  WaitEstimate,
+} from "../types/queue";
+import { maskPatientName } from "../utils/maskName";
+import { HttpError } from "../utils/errors";
+import { estimateWaitForNewJoiner, estimateWaitMinutes } from "../utils/waitTime";
+import type { JoinQueueInput } from "../validators/queueValidators";
+
+
+export interface ServiceCatalog {
+  list(): Service[] | Promise<Service[]>;
+  find(serviceId: string): Service | undefined | Promise<Service | undefined>;
+}
+
+const PRIORITY_RANK: Record<ServicePriority, number> = {
+  low: 0,
+  medium: 1,
+  high: 2,
+};
+
+
+export function compareEntries(a: QueueEntryRecord, b: QueueEntryRecord): number {
+  const byPriority = PRIORITY_RANK[b.priority] - PRIORITY_RANK[a.priority];
+  if (byPriority !== 0) return byPriority;
+  return new Date(a.joinedAt).getTime() - new Date(b.joinedAt).getTime();
+}
+
+function isActive(entry: QueueEntryRecord): boolean {
+  return entry.status === "waiting" || entry.status === "almost_ready";
+}
+
+function closeEntry(entry: QueueEntryRecord, status: "served" | "cancelled"): void {
+  entry.status = status;
+  entry.position = 0;
+  entry.estimatedWaitMinutes = 0;
+}
+
+function ticketPrefix(service: Service): string {
+  const initials = service.name
+    .split(/\s+/)
+    .map((word) => word.charAt(0))
+    .join("")
+    .toUpperCase()
+    .slice(0, 3);
+  return initials || "Q";
+}
+
+export class QueueService {
+  private readonly catalog: ServiceCatalog;
+
+  constructor(catalog: ServiceCatalog) {
+    this.catalog = catalog;
+  }
+
+  private async requireService(serviceId: string): Promise<Service> {
+    const service = await this.catalog.find(serviceId);
+    if (!service) throw new HttpError(404, "Service not found");
+    return service;
+  }
+
+  private findEntry(entryId: string): QueueEntryRecord {
+    const entry = listEntries().find((e) => e.id === entryId);
+    if (!entry) throw new HttpError(404, "Queue entry not found");
+    return entry;
+  }
+
+  private activeEntries(serviceId: string): QueueEntryRecord[] {
+    return listEntries()
+      .filter((e) => e.serviceId === serviceId && isActive(e))
+      .sort(compareEntries);
+  }
+
+
+  private refresh(service: Service): void {
+    this.activeEntries(service.id).forEach((entry, index) => {
+      entry.position = index + 1;
+      entry.estimatedWaitMinutes = estimateWaitMinutes(entry.position, service);
+      entry.status = entry.position === 1 ? "almost_ready" : "waiting";
+    });
+  }
+  
+  private summarize(service: Service): QueueSummaryRecord {
+    const waitingList = this.activeEntries(service.id).map((e) => ({ ...e }));
+    const lastEntry = waitingList[waitingList.length - 1];
+    return {
+      service: { ...service },
+      waitingCount: waitingList.length,
+      estimatedWaitMinutes: lastEntry ? lastEntry.estimatedWaitMinutes : 0,
+      waitingList,
+    };
+  }
+
+
+  async join(userId: string, input: JoinQueueInput): Promise<QueueEntryRecord> {
+    const service = await this.requireService(input.serviceId);
+
+    if (!service.isAvailable) {
+      throw new HttpError(409, `${service.name} is not accepting new entries right now`);
+    }
+
+
+    const alreadyQueued = this.activeEntries(service.id).some((e) => e.userId === userId);
+    if (alreadyQueued) {
+      throw new HttpError(409, "You are already in the queue for this service");
+    }
+
+    const entry: QueueEntryRecord = {
+      id: randomUUID(),
+      serviceId: service.id,
+      position: 0, 
+      estimatedWaitMinutes: 0,
+      status: "waiting",
+      joinedAt: new Date().toISOString(),
+      priority: service.priority,
+      userId,
+      customerName: input.customerName,
+      customerEmail: input.customerEmail,
+      date: input.date,
+      timeSlot: input.timeSlot,
+      ticketNumber: `${ticketPrefix(service)}-${nextTicketSequence()}`,
+    };
+
+    insertEntry(entry);
+    this.refresh(service);
+    return { ...entry };
+  }
+
+  async leave(entryId: string, userId: string): Promise<QueueEntryRecord> {
+    const entry = this.findEntry(entryId);
+
+    if (entry.userId !== userId) {
+      throw new HttpError(403, "You can only leave your own queue entry");
+    }
+    if (!isActive(entry)) {
+      throw new HttpError(409, `This entry is already ${entry.status}`);
+    }
+
+    const service = await this.catalog.find(entry.serviceId);
+    closeEntry(entry, "cancelled");
+    if (service) this.refresh(service);
+    return { ...entry };
+  }
+
+  getEntry(entryId: string, userId: string): QueueEntryRecord {
+    const entry = this.findEntry(entryId);
+    if (entry.userId !== userId) {
+      throw new HttpError(403, "You can only view your own queue entry");
+    }
+    return { ...entry };
+  }
+
+  listForUser(userId: string): QueueEntryRecord[] {
+    return listEntries()
+      .filter((e) => e.userId === userId && isActive(e))
+      .sort((a, b) => new Date(a.joinedAt).getTime() - new Date(b.joinedAt).getTime())
+      .map((e) => ({ ...e }));
+  }
+
+  async getWaitEstimate(serviceId: string): Promise<WaitEstimate> {
+    const service = await this.requireService(serviceId);
+    const waitingCount = this.activeEntries(serviceId).length;
+    return {
+      serviceId,
+      waitingCount,
+      expectedDuration: service.expectedDuration,
+      estimatedWaitMinutes: estimateWaitForNewJoiner(waitingCount, service),
+    };
+  }
+
+  async getPublicBoard(serviceId: string): Promise<PublicQueueRow[]> {
+    await this.requireService(serviceId);
+    return this.activeEntries(serviceId).map((entry) => ({
+      position: entry.position,
+      patient: maskPatientName(entry.customerName),
+      date: entry.date,
+      timeSlot: entry.timeSlot,
+    }));
+  }
+  
+  async getAdminQueue(serviceId: string): Promise<QueueSummaryRecord>  {
+    return this.summarize(await this.requireService(serviceId));
+  }
+
+  async listAdminQueues(): Promise<QueueSummaryRecord[]> {
+    const services = await this.catalog.list();
+    return services.map((service) => this.summarize(service));
+  }
+
+  async serveNext(serviceId: string): Promise<ServeNextResult> {
+    const service = await this.requireService(serviceId);
+
+    const [next] = this.activeEntries(serviceId);
+    if (!next) throw new HttpError(409, "No one is waiting for this service");
+
+    closeEntry(next, "served");
+    this.refresh(service);
+
+    const [nextUp] = this.activeEntries(serviceId);
+    return { served: { ...next }, nextUp: nextUp ? { ...nextUp } : null };
+  }
+}
+// ===== C:\Users\kiral\OneDrive\Documents\GitHub\QueueSmart\server\src\services\serviceService.ts =====
+
+import type { Service } from '../models/service'
+import {
+  validateServiceInput,
+  type ServiceInput,
+} from '../validators/serviceValidator'
+
+export class ServiceService {
+  private services: Service[] = [
+    {
+      id: 1,
+      name: 'Student ID Card',
+      description: 'Student identification card services.',
+      duration: 15,
+      priority: 'medium',
+    },
+    {
+      id: 2,
+      name: 'Financial Aid Consultation',
+      description: 'Assistance with financial aid questions and applications.',
+      duration: 30,
+      priority: 'high',
+    },
+    {
+      id: 3,
+      name: 'DMV License Renewal',
+      description: 'License renewal and related documentation services.',
+      duration: 20,
+      priority: 'low',
+    },
+  ]
+
+  private nextId = 4
+
+  listServices(): Service[] {
+    return this.services.map((service) => ({ ...service }))
+  }
+
+  createService(input: unknown): Service {
+    const result = validateServiceInput(input)
+
+    if (!result.valid) {
+      throw new Error(result.errors.join(' '))
+    }
+
+    const data = input as ServiceInput
+
+    const service: Service = {
+      id: this.nextId++,
+      name: data.name.trim(),
+      description: data.description.trim(),
+      duration: data.duration,
+      priority: data.priority,
+    }
+
+    this.services.push(service)
+    return { ...service }
+  }
+
+  updateService(id: number, input: unknown): Service | undefined {
+    const existing = this.services.find((service) => service.id === id)
+
+    if (!existing) {
+      return undefined
+    }
+
+    const result = validateServiceInput(input)
+
+    if (!result.valid) {
+      throw new Error(result.errors.join(' '))
+    }
+
+    const data = input as ServiceInput
+
+    const updated: Service = {
+      id: existing.id,
+      name: data.name.trim(),
+      description: data.description.trim(),
+      duration: data.duration,
+      priority: data.priority,
+    }
+
+    this.services = this.services.map((service) =>
+      service.id === id ? updated : service,
+    )
+
+    return { ...updated }
+  }
+    removeService(id: number): boolean {
+    const exists = this.services.some(
+      (service) => service.id === id,
+    )
+
+    if (!exists) {
+      return false
+    }
+
+    this.services = this.services.filter(
+      (service) => service.id !== id,
+    )
+
+    return true
+  }
+}

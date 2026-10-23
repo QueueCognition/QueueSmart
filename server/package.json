@@ -12,6 +12,7 @@
     "test": "vitest run --exclude dist/** && node --env-file=test/test.env --import tsx --test \"test/**/*.ts\"",
     "test:watch": "vitest",
     "test:coverage": "node --env-file=test/test.env --import tsx --experimental-test-coverage --test-coverage-include=\"src/**\" --test \"test/**/*.ts\"",
+    "test:coverage:unit": "vitest run --exclude dist/** --coverage --coverage.include=\"src/**/{queue*,waitTime,maskName,currentUser,requireStaff}.ts\"",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix"
@@ -31,6 +32,7 @@
     "@types/express": "^5.0.6",
     "@types/node": "^26.6.5",
     "@types/supertest": "^7.2.1",
+    "@vitest/coverage-v8": "^5.0.5",
     "eslint": "^10.13.0",
     "globals": "^17.13.0",
     "supertest": "^7.3.1",
