@@ -1,24 +1,38 @@
-import { useState } from "react";
+import { useNotifications } from "../context/NotificationContext";
+import { useQueueStatus } from "../hooks/useQueueStatus";
+import { useEffect, useState } from "react";
+import { getAppointments } from "../services/appointmentService";
+import { mockServices, type MockAppointment } from "../services/mockData";
 import "../styles/dashboard.css";
 import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
 function Dashboard() {
   const { user } = useAuth();
+  const { notifications, markRead } = useNotifications();
+  const entry = useQueueStatus("q1");
 
-  const [notifications, setNotifications] = useState([
-    { id: 1, text: "Notification 1" },
-    { id: 2, text: "Notification 2." },
-    { id: 3, text: "Notification 3." },
-    { id: 4, text: "Notification 4" },
-    { id: 5, text: "NOtification 5" },
-  ]);
+  const [appointments, setAppointments] = useState<MockAppointment[]>([]);
 
-  const dismissNotification = (id: number) => {
-    setNotifications((previous) =>
-      previous.filter((notification) => notification.id !== id),
-    );
-  };
+  useEffect(() => {
+    if (!user) return;
+
+    getAppointments(user.id).then(setAppointments);
+  }, [user]);
+
+  const todayString = new Date().toISOString().split("T")[0];
+
+  const upcomingAppointments = appointments
+    .filter(
+      (appointment) =>
+        appointment.date >= todayString &&
+        appointment.status === "upcoming",
+    )
+    .sort((a, b) => {
+      return `${a.date} ${a.time}`.localeCompare(
+        `${b.date} ${b.time}`,
+      );
+    });
 
   return (
     <div className="dashboard-page">
@@ -32,11 +46,20 @@ function Dashboard() {
           <h2>Current Queue</h2>
 
           <p className="dashboard-queue-label">Your position in the queue</p>
-          <p className="dashboard-queue-number">#3</p>
+          {entry ? (
+            <>
+              <p className="dashboard-queue-number">
+                #{entry.position}
+              </p>
 
-          <p className="dashboard-wait">
-            Estimated wait: <strong>12 minutes</strong>
-          </p>
+              <p className="dashboard-wait">
+                Estimated wait:{" "}
+                <strong>{entry.estimatedWaitMinutes} minutes</strong>
+              </p>
+            </>
+          ) : (
+            <p>Loading your queue status...</p>
+          )}
 
           <Link to="/schedule/queue-status" className="dashboard-link">
             View queue status →
@@ -45,37 +68,94 @@ function Dashboard() {
 
         <section className="dashboard-card">
           <h2>Upcoming Appointments</h2>
-
           <ul className="dashboard-services">
-            <li>Appointment 1</li>
-            <li>Appointment 2</li>
-            <li>Appointment 3</li>
+            {upcomingAppointments.length === 0 ? (
+              <li>No upcoming appointments.</li>
+            ) : (
+              upcomingAppointments.map((appointment) => {
+                const service = mockServices.find(
+                  (service) => service.id === appointment.serviceId,
+                );
+
+                return (
+                  <li key={appointment.id}>
+                    <strong>{service?.name}</strong>
+                    <br />
+                    {appointment.date} at {appointment.time}
+                  </li>
+                );
+              })
+            )}
           </ul>
+
+          <Link to="/schedule/join-queue" className="dashboard-button">
+            Make an Appointment
+          </Link>
 
           <Link to="/calendar" className="dashboard-link">
             View calendar →
           </Link>
+        </section>
+        <section className="dashboard-card">
+          <h2>Past Appointments</h2>
+
+          <ul className="dashboard-services">
+            {appointments
+              .filter((appointment) => appointment.status === "completed")
+              .sort((a, b) =>
+                `${b.date} ${b.time}`.localeCompare(
+                  `${a.date} ${a.time}`,
+                ),
+              )
+              .map((appointment) => {
+                const service = mockServices.find(
+                  (service) => service.id === appointment.serviceId,
+                );
+
+                return (
+                  <li key={appointment.id}>
+                    <strong>{service?.name}</strong>
+                    <br />
+                    {appointment.date} at {appointment.time}
+                  </li>
+                );
+              })}
+          </ul>
+
+          {appointments.filter(
+            (appointment) => appointment.status === "completed",
+          ).length === 0 && <p>No past appointments.</p>}
         </section>
 
         <section className="dashboard-card dashboard-card--full">
           <h2>Notifications</h2>
 
           <div className="dashboard-notifications">
-            {notifications.map((notification) => (
-              <div key={notification.id} className="notification-item">
-                <span className="notification-text">{notification.text}</span>
+            {notifications.filter((notification) => !notification.read).length === 0 ? (
+              <p className="notifications-empty">
+                You're all caught up!
+              </p>
+            ) : (
+              notifications
+                .filter((notification) => !notification.read)
+                .map((notification) => (
+                  <div key={notification.id} className="notification-item">
+                    <span className="notification-text">
+                      {notification.message}
+                    </span>
 
-                <button
-                  type="button"
-                  className="cross-btn"
-                  onClick={() => dismissNotification(notification.id)}
-                  aria-label="Dismiss notification"
-                  title="Dismiss"
-                >
-                  &times;
-                </button>
-              </div>
-            ))}
+                    <button
+                      type="button"
+                      className="cross-btn"
+                      onClick={() => markRead(notification.id)}
+                      aria-label="Dismiss notification"
+                      title="Dismiss"
+                    >
+                      &times;
+                    </button>
+                  </div>
+                ))
+            )}
           </div>
         </section>
       </div>

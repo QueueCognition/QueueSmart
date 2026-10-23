@@ -145,8 +145,11 @@
   }
 
   .calendar-day {
-    min-height: 65px;
-    padding: 0.35rem;
+    min-height: 120px;
+    padding: 0.75rem;
+    border-right: 1px solid var(--border-light);
+    border-bottom: 1px solid var(--border-light);
+    background: var(--bg-card);
   }
 
   .calendar-date {
@@ -154,4 +157,42 @@
     height: 28px;
     font-size: 0.85rem;
   }
+}
+
+.calendar-appointments {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-top: 0.5rem;
+}
+
+.calendar-appointment {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 0.4rem 0.5rem;
+  border-radius: 6px;
+  background: var(--navy-100);
+  color: var(--navy-800);
+  font-size: 0.72rem;
+  overflow: hidden;
+}
+
+.calendar-appointment strong {
+  font-size: 0.7rem;
+}
+
+.calendar-appointment span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.calendar-appointment--completed {
+  opacity: 0.6;
+}
+
+.calendar-appointment--cancelled {
+  text-decoration: line-through;
+  opacity: 0.5;
 }

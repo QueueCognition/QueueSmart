@@ -1,7 +1,22 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import "../styles/calendar.css";
+import { useAuth } from "../context/AuthContext";
+import { getAppointments } from "../services/appointmentService";
+import type { MockAppointment } from "../services/mockData";
+import { mockServices } from "../services/mockData";
 
 function Calendar() {
+  const { user } = useAuth();
+
+  const [appointments, setAppointments] = useState<MockAppointment[]>([]);
+
+  useEffect(() => {
+    if (!user) return;
+
+    getAppointments(user.id).then(setAppointments);
+  }, [user]);
+
+
   const [currentMonth, setCurrentMonth] = useState(() => new Date());
 
   function changeMonth(amount: number) {
@@ -57,6 +72,24 @@ function Calendar() {
     today.getMonth() === currentMonth.getMonth();
 
   const weekdays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+  function getAppointmentsForDay(day: number) {
+    const date = new Date(
+      currentMonth.getFullYear(),
+      currentMonth.getMonth(),
+      day,
+    );
+
+    const dateString = [
+      date.getFullYear(),
+      String(date.getMonth() + 1).padStart(2, "0"),
+      String(date.getDate()).padStart(2, "0"),
+    ].join("-");
+
+    return appointments.filter(
+      (appointment) => appointment.date === dateString,
+    );
+  }
 
   return (
     <div className="calendar-page">
@@ -131,20 +164,47 @@ function Calendar() {
           </div>
         ))}
 
-        {calendarDays.map((day, index) => (
-          <div
-            className={`calendar-day ${
-              day === null ? "calendar-day-empty" : ""
-            } ${
-              isCurrentMonth && day === today.getDate()
-                ? "calendar-day-today"
-                : ""
-            }`}
-            key={index}
-          >
-            {day !== null && <span className="calendar-date">{day}</span>}
-          </div>
-        ))}
+        {calendarDays.map((day, index) => {
+          const dayAppointments =
+            day !== null ? getAppointmentsForDay(day) : [];
+
+          return (
+            <div
+              className={`calendar-day ${
+                day === null ? "calendar-day-empty" : ""
+              } ${
+                isCurrentMonth && day === today.getDate()
+                  ? "calendar-day-today"
+                  : ""
+              }`}
+              key={index}
+            >
+              {day !== null && (
+                <>
+                  <span className="calendar-date">{day}</span>
+
+                  <div className="calendar-appointments">
+                    {dayAppointments.map((appointment) => {
+                      const service = mockServices.find(
+                        (service) => service.id === appointment.serviceId,
+                      );
+
+                      return (
+                        <div
+                          className={`calendar-appointment calendar-appointment--${appointment.status}`}
+                          key={appointment.id}
+                        >
+                          <strong>{appointment.time}</strong>
+                          <span>{service?.name}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </>
+              )}
+            </div>
+          );
+        })}
       </div>
     </div>
   );

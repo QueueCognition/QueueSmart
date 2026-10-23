@@ -1,9 +1,12 @@
 
 import { createApp } from './app'
+import { config } from './config/env'
+import { seedMockAccounts } from './db/seed'
 
-const port = Number(process.env.PORT) || 3000
+seedMockAccounts()
+
 const app = createApp()
 
-app.listen(port, () => {
-  console.log(`QueueSmart backend running at http://localhost:${port}`)
+app.listen(config.port, () => {
+  console.log(`QueueSmart backend running at http://localhost:${config.port}`)
 })

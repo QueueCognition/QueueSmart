@@ -15,6 +15,7 @@ import type {
   User,
 } from "../types/auth";
 import * as authService from "../services/authService";
+import { AuthError } from "../services/authError";
 
 const STORAGE_KEY = "queuesmart.auth.session";
 
@@ -78,20 +79,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const token = session.token;
     let cancelled = false;
 
-    authService.verifySessionBinding(session).then((isValid) => {
-      if (cancelled) return;
+    authService
+      .fetchSessionUser(token)
+      .then(() => {
+        if (!cancelled) setVerifiedToken(token);
+      })
+      .catch((error: unknown) => {
+        if (cancelled) return;
 
-      if (isValid) {
-        setVerifiedToken(token);
-        return;
-      }
+        if (!(error instanceof AuthError) || error.status !== 401) {
+          setVerifiedToken(token);
+          return;
+        }
 
-      clearStoredSession();
-      setSession(null);
-      setVerifiedToken(null);
-      setSessionInvalidated(true);
-      navigate("/login", { replace: true });
-    });
+        clearStoredSession();
+        setSession(null);
+        setVerifiedToken(null);
+        setSessionInvalidated(true);
+        navigate("/login", { replace: true });
+      });
 
     return () => {
       cancelled = true;

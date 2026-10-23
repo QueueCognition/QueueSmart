@@ -180,20 +180,6 @@
   cursor: not-allowed;
 }
 
-.auth__hint {
-  margin-top: 1.25rem;
-  padding: 0.6rem 0.75rem;
-  background: var(--navy-100);
-  border-radius: 8px;
-  color: var(--navy-800);
-  font-size: 0.8rem;
-  text-align: center;
-}
-
-.auth__hint strong {
-  font-weight: 600;
-}
-
 .auth__footer {
   display: flex;
   flex-direction: column;
