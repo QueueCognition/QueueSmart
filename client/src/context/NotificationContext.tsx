@@ -8,7 +8,7 @@ import {
 } from "react";
 import type { Notification } from "../types/queue";
 import { useAuth } from "./AuthContext";
-import { getNotifications } from "../services/notificationService";
+import { getNotifications , markNotificationAsRead, markAllNotificationsAsRead } from "../services/notificationService";
 
 interface NotificationContextValue {
   notifications: Notification[];
@@ -80,16 +80,28 @@ export function NotificationProvider({
     [],
   );
 
-  const markRead = useCallback((id: string) => {
-    setNotifications((prev) =>
-      prev.map((n) => (n.id === id ? { ...n, read: true } : n)),
-    );
+  const markRead = useCallback(async (id: string) => {
+    try {
+      const updated = await markNotificationAsRead(id);
+
+      setNotifications((prev) =>
+        prev.map((n) => (n.id === id ? updated : n))
+      );
+    } catch (error: unknown) {
+      console.error("Failed to mark notification as read:", error);
+    }
   }, []);
 
-  const markAllRead = useCallback(() => {
-    setNotifications((prev) =>
-      prev.map((n) => ({ ...n, read: true })),
-    );
+  const markAllRead = useCallback(async () => {
+    try {
+      await markAllNotificationsAsRead();
+
+      setNotifications((prev) =>
+        prev.map((n) => ({ ...n, read: true }))
+      );
+    } catch (error: unknown) {
+      console.error("Failed to mark all notifications as read:", error);
+    }
   }, []);
 
   return (

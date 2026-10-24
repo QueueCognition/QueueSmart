@@ -31,3 +31,43 @@ export async function getNotifications(): Promise<Notification[]> {
 
   return (await response.json()) as Notification[];
 }
+
+export async function markNotificationAsRead(
+  notificationId: string
+): Promise<Notification> {
+  const headers = new Headers();
+  const token = getStoredAccessToken();
+
+  if (token) {
+    headers.set("Authorization", `Bearer ${token}`);
+  }
+
+  const response = await fetch(
+    `${NOTIFICATION_URL}/${encodeURIComponent(notificationId)}/read`,
+    { method: "PATCH", headers }
+  );
+
+  if (!response.ok) {
+    throw new Error("Failed to mark notification as read.");
+  }
+
+  return (await response.json()) as Notification;
+}
+
+export async function markAllNotificationsAsRead(): Promise<void> {
+  const headers = new Headers();
+  const token = getStoredAccessToken();
+
+  if (token) {
+    headers.set("Authorization", `Bearer ${token}`);
+  }
+
+  const response = await fetch(`${NOTIFICATION_URL}/read`, {
+    method: "PATCH",
+    headers,
+  });
+
+  if (!response.ok) {
+    throw new Error("Failed to mark notifications as read.");
+  }
+}

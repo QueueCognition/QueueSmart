@@ -3,7 +3,9 @@ import { randomUUID } from "node:crypto";
 import {
   insertNotification,
   listNotificationsForUser,
-  type StoredNotification,
+  markNotificationRead as markStoredNotificationRead,
+  markAllNotificationsRead as markAllStoredNotificationsRead,
+  type StoredNotification
 } from "../models/notificationStore";
 import type { Notification, NotificationType } from "../types/queue";
 
@@ -49,3 +51,27 @@ export function getNotificationsForUser(
       read,
     }));
 }
+
+export function markNotificationAsRead(
+  userId: string,
+  notificationId: string
+): Notification | undefined {
+  const notification = markStoredNotificationRead(
+    userId,
+    notificationId
+  );
+
+  if (!notification) {
+    return undefined;
+  }
+
+  const { id, message, type, timestamp, read } = notification;
+  return { id, message, type, timestamp, read };
+}
+
+export function markAllNotificationsAsRead(
+  userId: string
+): void {
+  markAllStoredNotificationsRead(userId);
+}
+
