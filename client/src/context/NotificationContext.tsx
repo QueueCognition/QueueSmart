@@ -1,5 +1,14 @@
-import { createContext, useContext, useState, type ReactNode } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useState,
+  type ReactNode,
+} from "react";
 import type { Notification } from "../types/queue";
+import { useAuth } from "./AuthContext";
+import { getNotifications } from "../services/notificationService";
 
 interface NotificationContextValue {
   notifications: Notification[];
@@ -8,67 +17,69 @@ interface NotificationContextValue {
   markAllRead: () => void;
 }
 
-const NotificationContext = createContext<NotificationContextValue | undefined>(
-  undefined,
-);
+const NotificationContext = createContext<
+  NotificationContextValue | undefined
+>(undefined);
 
-const minutesAgo = (m: number) =>
-  new Date(Date.now() - m * 60 * 1000).toISOString();
+export function NotificationProvider({
+  children,
+}: {
+  children: ReactNode;
+}) {
+  const { isAuthenticated, isInitializing } = useAuth();
 
-const demoNotifications: Notification[] = [
-  {
-    id: crypto.randomUUID(),
-    type: "queue_update",
-    message: "You're now #2 in line",
-    timestamp: minutesAgo(2),
-    read: false,
-  },
-  {
-    id: crypto.randomUUID(),
-    type: "status_change",
-    message: "Your status is now almost ready",
-    timestamp: minutesAgo(15),
-    read: false,
-  },
-  {
-    id: crypto.randomUUID(),
-    type: "queue_update",
-    message: "Estimated wait updated to 12 minutes",
-    timestamp: minutesAgo(60),
-    read: true,
-  },
-  {
-    id: crypto.randomUUID(),
-    type: "status_change",
-    message: "You joined the queue",
-    timestamp: minutesAgo(60 * 3),
-    read: true,
-  },
-];
+  const [notifications, setNotifications] = useState<Notification[]>([]);
 
-export function NotificationProvider({ children }: { children: ReactNode }) {
-  const [notifications, setNotifications] =
-    useState<Notification[]>(demoNotifications);
+  useEffect(() => {
+    if (!isAuthenticated || isInitializing) {
+      setNotifications([]);
+      return;
+    }
 
-  function push(n: Omit<Notification, "id" | "timestamp" | "read">) {
-    const newNotification: Notification = {
-      ...n,
-      id: crypto.randomUUID(),
-      timestamp: new Date().toISOString(),
-      read: false,
+    let cancelled = false;
+
+    getNotifications()
+      .then((loadedNotifications) => {
+        if (!cancelled) {
+          setNotifications(loadedNotifications);
+        }
+      })
+      .catch((error: unknown) => {
+        if (!cancelled) {
+          console.error("Failed to load notifications:", error);
+        }
+      });
+
+    return () => {
+      cancelled = true;
     };
-    setNotifications((prev) => [newNotification, ...prev]);
-  }
+  }, [isAuthenticated, isInitializing]);
 
-  function markRead(id: string) {
+  const push = useCallback(
+    (n: Omit<Notification, "id" | "timestamp" | "read">) => {
+      const newNotification: Notification = {
+        ...n,
+        id: crypto.randomUUID(),
+        timestamp: new Date().toISOString(),
+        read: false,
+      };
+
+      setNotifications((prev) => [newNotification, ...prev]);
+    },
+    [],
+  );
+
+  const markRead = useCallback((id: string) => {
     setNotifications((prev) =>
       prev.map((n) => (n.id === id ? { ...n, read: true } : n)),
     );
-  }
+  }, []);
 
-  function markAllRead() {
-    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
-  }
+  const markAllRead = useCallback(() => {
+    setNotifications((prev) =>
+      prev.map((n) => ({ ...n, read: true })),
+    );
+  }, []);
 
   return (
     <NotificationContext.Provider
@@ -81,9 +92,12 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
 
 export function useNotifications() {
   const ctx = useContext(NotificationContext);
-  if (!ctx)
+
+  if (!ctx) {
     throw new Error(
       "useNotifications must be used within NotificationProvider",
     );
+  }
+
   return ctx;
 }

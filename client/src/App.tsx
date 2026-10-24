@@ -19,9 +19,9 @@ import ServiceManagement from "./pages/ServiceManagement";
 
 function App() {
   return (
-    <NotificationProvider>
-      <BrowserRouter>
-        <AuthProvider>
+    <BrowserRouter>
+      <AuthProvider>
+        <NotificationProvider>
           <div className="app-navbar">
             <Navbar />
             <NotificationBell />
@@ -94,9 +94,9 @@ function App() {
 
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
-        </AuthProvider>
-      </BrowserRouter>
-    </NotificationProvider>
+        </NotificationProvider>
+      </AuthProvider>
+    </BrowserRouter>
   );
 }
 

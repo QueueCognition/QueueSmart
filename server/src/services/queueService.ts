@@ -20,6 +20,7 @@ import {
   estimateWaitMinutes,
 } from "../utils/waitTime";
 import type { JoinQueueInput } from "../validators/queueValidators";
+import { createNotification } from "./notificationService";
 
 export interface ServiceCatalog {
   list(): Service[] | Promise<Service[]>;
@@ -156,6 +157,13 @@ export class QueueService {
 
     insertEntry(entry);
     this.refresh(service);
+
+    createNotification(
+      userId,
+      `You joined the queue for ${service.name}.`,
+      "queue_update"
+    );
+
     return { ...entry };
   }
 
@@ -243,6 +251,15 @@ export class QueueService {
     this.refresh(service);
 
     const [nextUp] = this.activeEntries(serviceId);
+    
+    if (nextUp) {
+      createNotification(
+        nextUp.userId,
+        `You're next to be served for ${service.name}.`,
+        "queue_update",
+      );
+    }
+    
     return { served: { ...next }, nextUp: nextUp ? { ...nextUp } : null };
   }
 }
