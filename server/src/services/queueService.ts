@@ -173,13 +173,37 @@ export class QueueService {
     if (entry.userId !== userId) {
       throw new HttpError(403, "You can only leave your own queue entry");
     }
+
     if (!isActive(entry)) {
       throw new HttpError(409, `This entry is already ${entry.status}`);
     }
 
     const service = await this.catalog.find(entry.serviceId);
+    const wasFirst = this.activeEntries(entry.serviceId)[0]?.id === entry.id;
+
     closeEntry(entry, "cancelled");
-    if (service) this.refresh(service);
+    createNotification(
+      userId,
+      `You left the queue for ${service?.name ?? entry.serviceId}.`,
+      "queue_update",
+    );
+
+    if (service) {
+      this.refresh(service);
+
+      if (wasFirst) {
+        const [nextUp] = this.activeEntries(service.id);
+
+        if (nextUp) {
+          createNotification(
+            nextUp.userId,
+            `You're next to be served for ${service.name}.`,
+            "queue_update",
+          );
+        }
+      }
+    }
+
     return { ...entry };
   }
 

@@ -9,7 +9,6 @@ import {
   leaveQueue,
 } from "../services/queueService";
 import type { WaitEstimate } from "../types/queue";
-import { useNotifications } from "../context/NotificationContext";
 import { useAuth } from "../context/AuthContext";
 import { Link } from "react-router-dom";
 
@@ -36,7 +35,6 @@ function JoinQueue() {
   const [submitting, setSubmitting] = useState(false);
   const [myQueue, setMyQueue] = useState<QueueEntry[]>([]);
   const [waitEstimate, setWaitEstimate] = useState<WaitEstimate | null>(null);
-  const { push } = useNotifications();
   const { isAuthenticated } = useAuth();
 
   useEffect(() => {
@@ -138,10 +136,6 @@ function JoinQueue() {
         timeSlot,
       });
       setMyQueue((current) => [...current, entry]);
-      push({
-        message: `You joined the queue for ${selectedService.name}.`,
-        type: "queue_update",
-      });
       setServiceId("");
       setDate("");
       setTimeSlot("");
@@ -163,10 +157,6 @@ function JoinQueue() {
     try {
       await leaveQueue(entry.id);
       setMyQueue((current) => current.filter((item) => item.id !== entry.id));
-      push({
-        message: `You left the queue for ${serviceName}.`,
-        type: "queue_update",
-      });
     } catch (error) {
       setFormError(
         error instanceof Error ? error.message : "Failed to leave the queue.",

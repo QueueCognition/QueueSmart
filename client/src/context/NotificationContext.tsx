@@ -30,30 +30,41 @@ export function NotificationProvider({
 
   const [notifications, setNotifications] = useState<Notification[]>([]);
 
+
   useEffect(() => {
     if (!isAuthenticated || isInitializing) {
       setNotifications([]);
       return;
     }
 
-    let cancelled = false;
+    let active = true;
 
-    getNotifications()
-      .then((loadedNotifications) => {
-        if (!cancelled) {
+    async function refresh() {
+      try {
+        const loadedNotifications = await getNotifications();
+
+        if (active) {
           setNotifications(loadedNotifications);
         }
-      })
-      .catch((error: unknown) => {
-        if (!cancelled) {
+      } catch (error: unknown) {
+        if (active) {
           console.error("Failed to load notifications:", error);
         }
-      });
+      }
+    }
+
+    void refresh();
+
+    const interval = window.setInterval(() => {
+      void refresh();
+    }, 5000);
 
     return () => {
-      cancelled = true;
+      active = false;
+      window.clearInterval(interval);
     };
   }, [isAuthenticated, isInitializing]);
+
 
   const push = useCallback(
     (n: Omit<Notification, "id" | "timestamp" | "read">) => {
