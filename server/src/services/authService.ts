@@ -23,7 +23,8 @@ import { AuthError } from "../utils/errors";
 import { verifyPassword } from "../utils/password";
 import { issueToken, verifyToken } from "../utils/token";
 
-const INVALID_SESSION_MESSAGE = "Invalid or expired session. Please sign in again.";
+const INVALID_SESSION_MESSAGE =
+  "Invalid or expired session. Please sign in again.";
 const NETWORK_CHANGED_MESSAGE =
   "Your session ended because your network address changed. Please sign in again.";
 

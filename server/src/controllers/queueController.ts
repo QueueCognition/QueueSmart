@@ -44,11 +44,10 @@ export function createQueueController(queueService: QueueService) {
   const getWaitTime: RequestHandler = async (req, res) => {
     res.json(await queueService.getWaitEstimate(routeParam(req, "serviceId")));
   };
-  
+
   const getBoard: RequestHandler = async (req, res) => {
     res.json(await queueService.getPublicBoard(routeParam(req, "serviceId")));
   };
-
 
   const listAdminQueues: RequestHandler = async (_req, res) => {
     res.json(await queueService.listAdminQueues());

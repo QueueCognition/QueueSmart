@@ -1,9 +1,5 @@
 import type { RequestHandler } from "express";
-import {
-  login,
-  register,
-  requestPasswordReset,
-} from "../services/authService";
+import { login, register, requestPasswordReset } from "../services/authService";
 import type { AuthSession, PasswordResetResult, User } from "../types/auth";
 import { AuthError } from "../utils/errors";
 import { clientIp } from "../utils/requestIp";

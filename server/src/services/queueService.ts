@@ -1,5 +1,9 @@
 import { randomUUID } from "node:crypto";
-import { insertEntry, listEntries, nextTicketSequence } from "../models/queueStore";
+import {
+  insertEntry,
+  listEntries,
+  nextTicketSequence,
+} from "../models/queueStore";
 import type {
   PublicQueueRow,
   QueueEntryRecord,
@@ -11,7 +15,10 @@ import type {
 } from "../types/queue";
 import { maskPatientName } from "../utils/maskName";
 import { HttpError } from "../utils/errors";
-import { estimateWaitForNewJoiner, estimateWaitMinutes } from "../utils/waitTime";
+import {
+  estimateWaitForNewJoiner,
+  estimateWaitMinutes,
+} from "../utils/waitTime";
 import type { JoinQueueInput } from "../validators/queueValidators";
 
 export interface ServiceCatalog {
@@ -25,7 +32,10 @@ const PRIORITY_RANK: Record<ServicePriority, number> = {
   high: 2,
 };
 
-export function compareEntries(a: QueueEntryRecord, b: QueueEntryRecord): number {
+export function compareEntries(
+  a: QueueEntryRecord,
+  b: QueueEntryRecord,
+): number {
   const byPriority = PRIORITY_RANK[b.priority] - PRIORITY_RANK[a.priority];
   if (byPriority !== 0) return byPriority;
   return new Date(a.joinedAt).getTime() - new Date(b.joinedAt).getTime();
@@ -35,7 +45,10 @@ function isActive(entry: QueueEntryRecord): boolean {
   return entry.status === "waiting" || entry.status === "almost_ready";
 }
 
-function closeEntry(entry: QueueEntryRecord, status: "served" | "cancelled"): void {
+function closeEntry(
+  entry: QueueEntryRecord,
+  status: "served" | "cancelled",
+): void {
   entry.status = status;
   entry.position = 0;
   entry.estimatedWaitMinutes = 0;
@@ -62,8 +75,10 @@ export class QueueService {
   private async requireService(serviceId: string): Promise<Service> {
     // Ensure string comparison matching regardless of spacing or type formatting
     const resolvedCatalog = await this.catalog.list();
-    const match = resolvedCatalog.find((s) => String(s.id) === String(serviceId).trim());
-    
+    const match = resolvedCatalog.find(
+      (s) => String(s.id) === String(serviceId).trim(),
+    );
+
     if (!match) {
       throw new HttpError(404, "Service not found");
     }
@@ -78,7 +93,9 @@ export class QueueService {
 
   private activeEntries(serviceId: string): QueueEntryRecord[] {
     return listEntries()
-      .filter((e) => String(e.serviceId) === String(serviceId).trim() && isActive(e))
+      .filter(
+        (e) => String(e.serviceId) === String(serviceId).trim() && isActive(e),
+      )
       .sort(compareEntries);
   }
 
@@ -89,7 +106,7 @@ export class QueueService {
       entry.status = entry.position === 1 ? "almost_ready" : "waiting";
     });
   }
-  
+
   private summarize(service: Service): QueueSummaryRecord {
     const waitingList = this.activeEntries(service.id).map((e) => ({ ...e }));
     const lastEntry = waitingList[waitingList.length - 1];
@@ -105,10 +122,15 @@ export class QueueService {
     const service = await this.requireService(input.serviceId);
 
     if (!service.isAvailable) {
-      throw new HttpError(409, `${service.name} is not accepting new entries right now`);
+      throw new HttpError(
+        409,
+        `${service.name} is not accepting new entries right now`,
+      );
     }
 
-    const alreadyQueued = this.activeEntries(service.id).some((e) => e.userId === userId);
+    const alreadyQueued = this.activeEntries(service.id).some(
+      (e) => e.userId === userId,
+    );
     if (alreadyQueued) {
       throw new HttpError(409, "You are already in the queue for this service");
     }
@@ -118,7 +140,7 @@ export class QueueService {
     const entry: QueueEntryRecord = {
       id: randomUUID(),
       serviceId: service.id,
-      position: 0, 
+      position: 0,
       estimatedWaitMinutes: 0,
       status: "waiting",
       joinedAt: now,
@@ -164,7 +186,10 @@ export class QueueService {
   listForUser(userId: string): QueueEntryRecord[] {
     return listEntries()
       .filter((e) => e.userId === userId && isActive(e))
-      .sort((a, b) => new Date(a.joinedAt).getTime() - new Date(b.joinedAt).getTime())
+      .sort(
+        (a, b) =>
+          new Date(a.joinedAt).getTime() - new Date(b.joinedAt).getTime(),
+      )
       .map((e) => ({ ...e }));
   }
 
@@ -173,8 +198,7 @@ export class QueueService {
       .filter((entry) => entry.userId === userId)
       .sort(
         (a, b) =>
-          new Date(b.updatedAt).getTime() -
-          new Date(a.updatedAt).getTime()
+          new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
       )
       .map((entry) => ({ ...entry }));
   }
@@ -199,8 +223,8 @@ export class QueueService {
       timeSlot: entry.timeSlot,
     }));
   }
-  
-  async getAdminQueue(serviceId: string): Promise<QueueSummaryRecord>  {
+
+  async getAdminQueue(serviceId: string): Promise<QueueSummaryRecord> {
     return this.summarize(await this.requireService(serviceId));
   }
 

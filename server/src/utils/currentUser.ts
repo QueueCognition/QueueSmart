@@ -12,10 +12,10 @@ function isUserRole(value: unknown): value is UserRole {
   return value === "user" || value === "staff" || value === "admin";
 }
 
-
 export function currentUser(res: Response): SessionUser {
   const stored: unknown = res.locals.user;
-  const candidate = isRecord(stored) && isRecord(stored.user) ? stored.user : stored;
+  const candidate =
+    isRecord(stored) && isRecord(stored.user) ? stored.user : stored;
 
   if (isRecord(candidate)) {
     const { id, role } = candidate;

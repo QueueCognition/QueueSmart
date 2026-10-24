@@ -17,7 +17,10 @@ function queryRequestedAt(email: string): number | null {
   return typeof value === "number" ? value : null;
 }
 
-export function remainingCooldownSeconds(email: string, now = Date.now()): number {
+export function remainingCooldownSeconds(
+  email: string,
+  now = Date.now(),
+): number {
   const requestedAt = queryRequestedAt(email);
   if (requestedAt === null) return 0;
 

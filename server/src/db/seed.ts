@@ -40,10 +40,30 @@ export async function seedDemoQueue(
   const today = new Date().toISOString().slice(0, 10);
 
   const people = [
-    { userId: "seed-1", name: "Alex Johnson", email: "alex.j@example.com", slot: "9:00 AM" },
-    { userId: "seed-2", name: "Maria Garcia", email: "maria.g@example.com", slot: "9:30 AM" },
-    { userId: "u_demo", name: "Demo User", email: DEMO_ACCOUNT.email, slot: "10:00 AM" },
-    { userId: "seed-4", name: "Sarah Lee", email: "sarah.l@example.com", slot: "10:30 AM" },
+    {
+      userId: "seed-1",
+      name: "Alex Johnson",
+      email: "alex.j@example.com",
+      slot: "9:00 AM",
+    },
+    {
+      userId: "seed-2",
+      name: "Maria Garcia",
+      email: "maria.g@example.com",
+      slot: "9:30 AM",
+    },
+    {
+      userId: "u_demo",
+      name: "Demo User",
+      email: DEMO_ACCOUNT.email,
+      slot: "10:00 AM",
+    },
+    {
+      userId: "seed-4",
+      name: "Sarah Lee",
+      email: "sarah.l@example.com",
+      slot: "10:30 AM",
+    },
   ];
 
   for (const person of people) {

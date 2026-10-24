@@ -68,7 +68,9 @@ export function verifyToken(token: string, secret: string): TokenClaims {
     throw new Error("Unsupported token header");
   }
 
-  const expected = Buffer.from(sign(`${headerSegment}.${payloadSegment}`, secret));
+  const expected = Buffer.from(
+    sign(`${headerSegment}.${payloadSegment}`, secret),
+  );
   const provided = Buffer.from(signatureSegment);
   if (
     expected.length !== provided.length ||
@@ -97,7 +99,10 @@ function parseClaims(segment: string): TokenClaims {
   if (typeof claims.sub !== "string" || !claims.sub) {
     throw new Error("Malformed token payload");
   }
-  if (typeof claims.role !== "string" || !ROLES.includes(claims.role as UserRole)) {
+  if (
+    typeof claims.role !== "string" ||
+    !ROLES.includes(claims.role as UserRole)
+  ) {
     throw new Error("Malformed token payload");
   }
   if (typeof claims.iat !== "number" || typeof claims.exp !== "number") {

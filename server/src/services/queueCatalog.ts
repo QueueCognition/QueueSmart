@@ -10,11 +10,13 @@ function toQueueService(service: ManagedService): Service {
     description: service.description,
     expectedDuration: service.duration,
     priority: service.priority,
-    isAvailable: true, 
+    isAvailable: true,
   };
 }
 
-export function createQueueCatalog(serviceService: ServiceService): ServiceCatalog {
+export function createQueueCatalog(
+  serviceService: ServiceService,
+): ServiceCatalog {
   return {
     list: () => serviceService.listServices().map(toQueueService),
     find: (serviceId) => {

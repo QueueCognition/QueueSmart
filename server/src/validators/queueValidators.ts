@@ -29,13 +29,15 @@ const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 function isRealDate(value: string): boolean {
   if (!DATE_PATTERN.test(value)) return false;
   const parsed = new Date(`${value}T00:00:00Z`);
-  return !Number.isNaN(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value;
+  return (
+    !Number.isNaN(parsed.getTime()) &&
+    parsed.toISOString().slice(0, 10) === value
+  );
 }
 
 function earliestAllowedDate(): string {
   return new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
 }
-
 
 function readText(
   raw: Record<string, unknown>,
@@ -66,11 +68,21 @@ export function validateJoinQueueInput(body: unknown): JoinQueueInput {
   >;
   const errors: FieldErrors = {};
 
-  const serviceId = readText(raw, "serviceId", errors, "Please select a service");
+  const serviceId = readText(
+    raw,
+    "serviceId",
+    errors,
+    "Please select a service",
+  );
   const fullName = readText(raw, "fullName", errors, "Full name is required");
   const email = readText(raw, "email", errors, "Email is required");
   const date = readText(raw, "date", errors, "Please select a date");
-  const timeSlot = readText(raw, "timeSlot", errors, "Please select a time slot");
+  const timeSlot = readText(
+    raw,
+    "timeSlot",
+    errors,
+    "Please select a time slot",
+  );
 
   if (serviceId.length > MAX_ID_LENGTH) {
     errors.serviceId = "Invalid service";
@@ -87,8 +99,10 @@ export function validateJoinQueueInput(body: unknown): JoinQueueInput {
   }
 
   if (date) {
-    if (!isRealDate(date)) errors.date = "Date must be a real date in YYYY-MM-DD format";
-    else if (date < earliestAllowedDate()) errors.date = "Date cannot be in the past";
+    if (!isRealDate(date))
+      errors.date = "Date must be a real date in YYYY-MM-DD format";
+    else if (date < earliestAllowedDate())
+      errors.date = "Date cannot be in the past";
   }
 
   if (timeSlot && !QUEUE_TIME_SLOTS.includes(timeSlot)) {
@@ -99,5 +113,11 @@ export function validateJoinQueueInput(body: unknown): JoinQueueInput {
     throw new ValidationError(errors);
   }
 
-  return { serviceId, customerName: fullName, customerEmail: email, date, timeSlot };
+  return {
+    serviceId,
+    customerName: fullName,
+    customerEmail: email,
+    date,
+    timeSlot,
+  };
 }
