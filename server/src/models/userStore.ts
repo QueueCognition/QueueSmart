@@ -16,16 +16,6 @@ export interface NewUser {
   role: UserRole;
 }
 
-export const DEMO_ACCOUNT = {
-  email: "demo@queuesmart.dev",
-  password: "password123",
-} as const;
-
-export const ADMIN_ACCOUNT = {
-  email: "admin@queuesmart.dev",
-  password: "password123",
-} as const;
-
 const ROLES: readonly UserRole[] = ["user", "staff", "admin"];
 
 const SELECT_COLUMNS =

@@ -5,7 +5,7 @@ import type { AddressInfo } from "node:net";
 import { after, before, describe, it } from "node:test";
 import { createApp } from "../../src/app";
 import { config } from "../../src/config/env";
-import { seedMockAccounts } from "../../src/db/seed";
+import { insertUser } from "../../src/models/userStore";
 
 const DEMO_EMAIL = "demo@queuesmart.dev";
 const PASSWORD = "password123";
@@ -14,7 +14,15 @@ let server: Server;
 let baseUrl = "";
 
 before(async () => {
-  seedMockAccounts();
+  insertUser({
+    id: "u_demo",
+    firstName: "Demo",
+    lastName: "User",
+    email: DEMO_EMAIL,
+    password: PASSWORD,
+    role: "user",
+  });
+
   server = createApp().listen(0);
   await once(server, "listening");
 

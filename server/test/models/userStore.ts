@@ -1,39 +1,23 @@
 import assert from "node:assert/strict";
-import { before, describe, it } from "node:test";
-import { seedMockAccounts } from "../../src/db/seed";
+import { describe, it } from "node:test";
 import {
-  ADMIN_ACCOUNT,
-  DEMO_ACCOUNT,
   findUserByEmail,
   findUserById,
   insertUser,
 } from "../../src/models/userStore";
 
-before(() => {
-  seedMockAccounts();
-});
-
-describe("seedMockAccounts", () => {
-  it("seeds the demo and admin accounts", () => {
-    const demo = findUserByEmail(DEMO_ACCOUNT.email);
-    const admin = findUserById("u_admin");
-
-    assert.equal(demo?.id, "u_demo");
-    assert.equal(demo?.role, "user");
-    assert.equal(admin?.email, ADMIN_ACCOUNT.email);
-    assert.equal(admin?.role, "admin");
-  });
-
-  it("does not duplicate accounts when run again", () => {
-    seedMockAccounts();
-    assert.equal(findUserByEmail(DEMO_ACCOUNT.email)?.id, "u_demo");
-    assert.equal(findUserById("u_admin")?.email, ADMIN_ACCOUNT.email);
-  });
-});
-
 describe("findUserByEmail", () => {
   it("normalizes case and surrounding spaces", () => {
-    assert.equal(findUserByEmail("  DEMO@QueueSmart.DEV ")?.id, "u_demo");
+    insertUser({
+      id: "u_lookup",
+      firstName: "Lookup",
+      lastName: "User",
+      email: "lookup@queuesmart.dev",
+      password: "password123",
+      role: "user",
+    });
+
+    assert.equal(findUserByEmail("  LOOKUP@QueueSmart.DEV ")?.id, "u_lookup");
   });
 
   it("returns undefined for unknown emails", () => {

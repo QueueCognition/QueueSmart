@@ -1,8 +1,7 @@
 import assert from "node:assert/strict";
 import { before, describe, it } from "node:test";
 import { config } from "../../src/config/env";
-import { seedMockAccounts } from "../../src/db/seed";
-import { findUserByEmail } from "../../src/models/userStore";
+import { findUserByEmail, insertUser } from "../../src/models/userStore";
 import {
   login,
   register,
@@ -17,7 +16,23 @@ const ADMIN_EMAIL = "admin@queuesmart.dev";
 const PASSWORD = "password123";
 
 before(() => {
-  seedMockAccounts();
+  insertUser({
+    id: "u_demo",
+    firstName: "Demo",
+    lastName: "User",
+    email: DEMO_EMAIL,
+    password: PASSWORD,
+    role: "user",
+  });
+
+  insertUser({
+    id: "u_admin",
+    firstName: "Admin",
+    lastName: "Manager",
+    email: ADMIN_EMAIL,
+    password: PASSWORD,
+    role: "admin",
+  });
 });
 
 describe("login", () => {
