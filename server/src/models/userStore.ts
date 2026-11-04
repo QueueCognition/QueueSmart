@@ -59,6 +59,10 @@ export function findUserById(id: string): StoredUser | undefined {
   return queryUser(`SELECT ${SELECT_COLUMNS} FROM users WHERE id = ?`, id);
 }
 
+export function hasUsers(): boolean {
+  return db.prepare("SELECT 1 FROM users LIMIT 1").get() !== undefined;
+}
+
 export function insertUser(input: NewUser): StoredUser {
   const record: StoredUser = {
     id: input.id,

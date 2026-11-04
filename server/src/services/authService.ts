@@ -8,6 +8,7 @@ import {
 import {
   findUserByEmail,
   findUserById,
+  hasUsers,
   insertUser,
   toPublicUser,
   type StoredUser,
@@ -66,7 +67,7 @@ export async function register(
     lastName: input.lastName,
     email: input.email,
     password: input.password,
-    role: "user",
+    role: hasUsers() ? "user" : "admin",
   });
 
   return createSession(user, boundIp);

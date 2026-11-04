@@ -61,7 +61,10 @@ function Register() {
         password,
       });
       push({
-        message: `Welcome to QueueSmart, ${user.firstName}`,
+        message:
+          user.role === "admin"
+            ? `Welcome to QueueSmart, ${user.firstName}. Administrator`
+            : `Welcome to QueueSmart, ${user.firstName}`,
         type: "status_change",
       });
       navigate("/", { replace: true });
