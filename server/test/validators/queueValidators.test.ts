@@ -1,6 +1,7 @@
-import { describe, expect, it } from "vitest";
-import { ValidationError, type FieldErrors } from "../src/utils/errors";
-import { validateJoinQueueInput } from "../src/validators/queueValidators";
+import assert from "node:assert/strict";
+import { describe, it } from "node:test";
+import { ValidationError, type FieldErrors } from "../../src/utils/errors";
+import { validateJoinQueueInput } from "../../src/validators/queueValidators";
 
 const today = new Date().toISOString().slice(0, 10);
 
@@ -27,7 +28,7 @@ function fieldErrorsFor(body: unknown): FieldErrors | undefined {
 
 describe("validateJoinQueueInput", () => {
   it("accepts a valid body and maps form fields to customer fields", () => {
-    expect(validateJoinQueueInput(validBody())).toEqual({
+    assert.deepEqual(validateJoinQueueInput(validBody()), {
       serviceId: "s1",
       customerName: "Jamie Win",
       customerEmail: "jamie@example.com",
@@ -38,7 +39,7 @@ describe("validateJoinQueueInput", () => {
 
   it("trims surrounding whitespace", () => {
     const result = validateJoinQueueInput(validBody({ fullName: "  Jamie Win  " }));
-    expect(result.customerName).toBe("Jamie Win");
+    assert.equal(result.customerName, "Jamie Win");
   });
 
   it("reports every invalid field at once", () => {
@@ -51,29 +52,30 @@ describe("validateJoinQueueInput", () => {
         timeSlot: "3:33 AM",
       }),
     );
-    expect(Object.keys(errors ?? {}).sort()).toEqual(
+    assert.deepEqual(
+      Object.keys(errors ?? {}).sort(),
       ["date", "email", "fullName", "serviceId", "timeSlot"].sort(),
     );
   });
 
   it("rejects names over 100 characters", () => {
-    expect(fieldErrorsFor(validBody({ fullName: "a".repeat(101) }))?.fullName).toBeDefined();
+    assert.notEqual(fieldErrorsFor(validBody({ fullName: "a".repeat(101) }))?.fullName, undefined);
   });
 
   it("rejects impossible dates like Feb 30", () => {
-    expect(fieldErrorsFor(validBody({ date: "2099-02-30" }))?.date).toBeDefined();
+    assert.notEqual(fieldErrorsFor(validBody({ date: "2099-02-30" }))?.date, undefined);
   });
 
   it("rejects dates in the past", () => {
-    expect(fieldErrorsFor(validBody({ date: "2020-01-01" }))?.date).toBeDefined();
+    assert.notEqual(fieldErrorsFor(validBody({ date: "2020-01-01" }))?.date, undefined);
   });
 
   it("rejects bodies that are not objects", () => {
-    expect(() => validateJoinQueueInput(null)).toThrow(ValidationError);
-    expect(() => validateJoinQueueInput("hello")).toThrow(ValidationError);
+    assert.throws(() => validateJoinQueueInput(null), ValidationError);
+    assert.throws(() => validateJoinQueueInput("hello"), ValidationError);
   });
 
-    it("rejects fields that are not text", () => {
+  it("rejects fields that are not text", () => {
     const errors = fieldErrorsFor(
       validBody({
         serviceId: 5,
@@ -83,24 +85,25 @@ describe("validateJoinQueueInput", () => {
         timeSlot: true,
       }),
     );
-    expect(Object.keys(errors ?? {}).sort()).toEqual(
+    assert.deepEqual(
+      Object.keys(errors ?? {}).sort(),
       ["date", "email", "fullName", "serviceId", "timeSlot"].sort(),
     );
-    expect(errors?.fullName).toBe("Must be text");
+    assert.equal(errors?.fullName, "Must be text");
   });
 
   it("treats null and missing fields as required", () => {
     const errors = fieldErrorsFor({ serviceId: null, fullName: "Jamie Win" });
-    expect(errors?.serviceId).toBe("Please select a service");
-    expect(errors?.email).toBe("Email is required");
+    assert.equal(errors?.serviceId, "Please select a service");
+    assert.equal(errors?.email, "Email is required");
   });
 
   it("rejects emails over 254 characters", () => {
     const tooLong = `${"a".repeat(250)}@x.com`;
-    expect(fieldErrorsFor(validBody({ email: tooLong }))?.email).toBeDefined();
+    assert.notEqual(fieldErrorsFor(validBody({ email: tooLong }))?.email, undefined);
   });
 
   it("rejects over-long service ids", () => {
-    expect(fieldErrorsFor(validBody({ serviceId: "s".repeat(65) }))?.serviceId).toBeDefined();
+    assert.notEqual(fieldErrorsFor(validBody({ serviceId: "s".repeat(65) }))?.serviceId, undefined);
   });
 });

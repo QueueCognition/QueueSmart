@@ -1,12 +1,13 @@
-import { beforeEach, describe, expect, it } from "vitest";
-import { clearQueueStore } from "../src/models/queueStore";
+import assert from "node:assert/strict";
+import { beforeEach, describe, it } from "node:test";
+import { clearQueueStore } from "../../src/models/queueStore";
 import {
   compareEntries,
   QueueService,
   type ServiceCatalog,
-} from "../src/services/queueService";
-import type { QueueEntryRecord, Service } from "../src/types/queue";
-import type { JoinQueueInput } from "../src/validators/queueValidators";
+} from "../../src/services/queueService";
+import type { QueueEntryRecord, Service } from "../../src/types/queue";
+import type { JoinQueueInput } from "../../src/validators/queueValidators";
 
 const today = new Date().toISOString().slice(0, 10);
 
@@ -53,6 +54,15 @@ function joinInput(overrides: Partial<JoinQueueInput> = {}): JoinQueueInput {
   };
 }
 
+function statusIs(error: unknown, status: number): boolean {
+  assert.equal((error as { status?: number }).status, status);
+  return true;
+}
+
+async function rejectsWithStatus(promise: Promise<unknown>, status: number): Promise<void> {
+  await assert.rejects(promise, (error: unknown) => statusIs(error, status));
+}
+
 let queue: QueueService;
 
 beforeEach(() => {
@@ -63,10 +73,10 @@ beforeEach(() => {
 describe("joining a queue", () => {
   it("puts the first person at position 1 as almost_ready", async () => {
     const entry = await queue.join("user-1", joinInput());
-    expect(entry.position).toBe(1);
-    expect(entry.status).toBe("almost_ready");
-    expect(entry.estimatedWaitMinutes).toBe(15);
-    expect(entry.userId).toBe("user-1");
+    assert.equal(entry.position, 1);
+    assert.equal(entry.status, "almost_ready");
+    assert.equal(entry.estimatedWaitMinutes, 15);
+    assert.equal(entry.userId, "user-1");
   });
 
   it("puts later arrivals behind, with wait = position x duration", async () => {
@@ -74,50 +84,44 @@ describe("joining a queue", () => {
     const second = await queue.join("user-2", joinInput());
     const third = await queue.join("user-3", joinInput());
 
-    expect(second.position).toBe(2);
-    expect(second.status).toBe("waiting");
-    expect(second.estimatedWaitMinutes).toBe(30);
-    expect(third.position).toBe(3);
-    expect(third.estimatedWaitMinutes).toBe(45);
+    assert.equal(second.position, 2);
+    assert.equal(second.status, "waiting");
+    assert.equal(second.estimatedWaitMinutes, 30);
+    assert.equal(third.position, 3);
+    assert.equal(third.estimatedWaitMinutes, 45);
   });
 
   it("builds ticket numbers from the service name", async () => {
     const first = await queue.join("user-1", joinInput());
     const second = await queue.join("user-2", joinInput());
-    expect(first.ticketNumber).toBe("DLR-101");
-    expect(second.ticketNumber).toBe("DLR-102");
+    assert.equal(first.ticketNumber, "DLR-101");
+    assert.equal(second.ticketNumber, "DLR-102");
   });
 
   it("keeps separate queues per service", async () => {
     await queue.join("user-1", joinInput({ serviceId: "s1" }));
     const other = await queue.join("user-1", joinInput({ serviceId: "s2" }));
-    expect(other.position).toBe(1);
+    assert.equal(other.position, 1);
   });
 
   it("rejects an unknown service with 404", async () => {
-    await expect(
-      queue.join("user-1", joinInput({ serviceId: "nope" })),
-    ).rejects.toMatchObject({ status: 404 });
+    await rejectsWithStatus(queue.join("user-1", joinInput({ serviceId: "nope" })), 404);
   });
 
   it("rejects an unavailable service with 409", async () => {
-    await expect(
-      queue.join("user-1", joinInput({ serviceId: "s3" })),
-    ).rejects.toMatchObject({ status: 409 });
+    await rejectsWithStatus(queue.join("user-1", joinInput({ serviceId: "s3" })), 409);
   });
 
   it("rejects joining the same service twice with 409", async () => {
     await queue.join("user-1", joinInput());
-    await expect(queue.join("user-1", joinInput())).rejects.toMatchObject({
-      status: 409,
-    });
+    await rejectsWithStatus(queue.join("user-1", joinInput()), 409);
   });
 
   it("lets a user rejoin after leaving", async () => {
     const entry = await queue.join("user-1", joinInput());
     await queue.leave(entry.id, "user-1");
     const again = await queue.join("user-1", joinInput());
-    expect(again.position).toBe(1);
+    assert.equal(again.position, 1);
   });
 });
 
@@ -128,37 +132,31 @@ describe("leaving a queue", () => {
     await queue.join("user-3", joinInput());
 
     const left = await queue.leave(first.id, "user-1");
-    expect(left.status).toBe("cancelled");
+    assert.equal(left.status, "cancelled");
 
     const { waitingList } = await queue.getAdminQueue("s1");
-    expect(waitingList.map((e) => e.userId)).toEqual(["user-2", "user-3"]);
-    expect(waitingList[0]?.position).toBe(1);
-    expect(waitingList[0]?.status).toBe("almost_ready");
-    expect(waitingList[1]?.estimatedWaitMinutes).toBe(30);
+    assert.deepEqual(waitingList.map((e) => e.userId), ["user-2", "user-3"]);
+    assert.equal(waitingList[0]?.position, 1);
+    assert.equal(waitingList[0]?.status, "almost_ready");
+    assert.equal(waitingList[1]?.estimatedWaitMinutes, 30);
   });
 
   it("only lets users leave their own entry (403)", async () => {
     const entry = await queue.join("user-1", joinInput());
-    await expect(queue.leave(entry.id, "someone-else")).rejects.toMatchObject({
-      status: 403,
-    });
+    await rejectsWithStatus(queue.leave(entry.id, "someone-else"), 403);
   });
 
   it("returns 404 for an unknown entry", async () => {
-    await expect(queue.leave("missing", "user-1")).rejects.toMatchObject({
-      status: 404,
-    });
+    await rejectsWithStatus(queue.leave("missing", "user-1"), 404);
   });
 
   it("returns 409 when leaving twice", async () => {
     const entry = await queue.join("user-1", joinInput());
     await queue.leave(entry.id, "user-1");
-    await expect(queue.leave(entry.id, "user-1")).rejects.toMatchObject({
-      status: 409,
-    });
+    await rejectsWithStatus(queue.leave(entry.id, "user-1"), 409);
   });
 
-    it("still lets a user leave after their service was removed", async () => {
+  it("still lets a user leave after their service was removed", async () => {
     const services = [...testServices];
     const shrinkingQueue = new QueueService({
       list: () => services,
@@ -169,7 +167,7 @@ describe("leaving a queue", () => {
     services.length = 0; // the service is deleted
 
     const left = await shrinkingQueue.leave(entry.id, "user-1");
-    expect(left.status).toBe("cancelled");
+    assert.equal(left.status, "cancelled");
   });
 });
 
@@ -180,31 +178,28 @@ describe("reading entries", () => {
     await queue.join("user-2", joinInput({ serviceId: "s1" }));
 
     const mine = queue.listForUser("user-1");
-    expect(mine).toHaveLength(2);
-    expect(mine.every((e) => e.userId === "user-1")).toBe(true);
+    assert.equal(mine.length, 2);
+    assert.ok(mine.every((e) => e.userId === "user-1"));
   });
 
   it("drops left entries from the user's list", async () => {
     const entry = await queue.join("user-1", joinInput());
     await queue.leave(entry.id, "user-1");
-    expect(queue.listForUser("user-1")).toHaveLength(0);
+    assert.equal(queue.listForUser("user-1").length, 0);
   });
 
   it("returns the user's completed and cancelled entries as history", async () => {
     await queue.join("user-1", joinInput());
     await queue.serveNext("s1");
 
-    const cancelled = await queue.join(
-      "user-1",
-      joinInput({ serviceId: "s2" }),
-    );
+    const cancelled = await queue.join("user-1", joinInput({ serviceId: "s2" }));
     await queue.leave(cancelled.id, "user-1");
 
     const history = queue.getHistoryForUser("user-1");
 
-    expect(history).toHaveLength(2);
-    expect(history.map((entry) => entry.status)).toContain("served");
-    expect(history.map((entry) => entry.status)).toContain("cancelled");
+    assert.equal(history.length, 2);
+    assert.ok(history.map((entry) => entry.status).includes("served"));
+    assert.ok(history.map((entry) => entry.status).includes("cancelled"));
   });
 
   it("returns only the requesting user's history", async () => {
@@ -216,18 +211,18 @@ describe("reading entries", () => {
 
     const history = queue.getHistoryForUser("user-1");
 
-    expect(history).toHaveLength(1);
-    expect(history[0]?.userId).toBe("user-1");
+    assert.equal(history.length, 1);
+    assert.equal(history[0]?.userId, "user-1");
   });
 
   it("lets the owner read an entry but not other users", async () => {
     const entry = await queue.join("user-1", joinInput());
-    expect(queue.getEntry(entry.id, "user-1").id).toBe(entry.id);
-    expect(() => queue.getEntry(entry.id, "user-2")).toThrowError(
-      expect.objectContaining({ status: 403 }),
+    assert.equal(queue.getEntry(entry.id, "user-1").id, entry.id);
+    assert.throws(() => queue.getEntry(entry.id, "user-2"), (error: unknown) =>
+      statusIs(error, 403),
     );
-    expect(() => queue.getEntry("missing", "user-1")).toThrowError(
-      expect.objectContaining({ status: 404 }),
+    assert.throws(() => queue.getEntry("missing", "user-1"), (error: unknown) =>
+      statusIs(error, 404),
     );
   });
 });
@@ -238,25 +233,25 @@ describe("serving the next user", () => {
     await queue.join("user-2", joinInput());
 
     const { served, nextUp } = await queue.serveNext("s1");
-    expect(served.userId).toBe("user-1");
-    expect(served.status).toBe("served");
-    expect(nextUp?.userId).toBe("user-2");
-    expect(nextUp?.position).toBe(1);
-    expect(nextUp?.status).toBe("almost_ready");
+    assert.equal(served.userId, "user-1");
+    assert.equal(served.status, "served");
+    assert.equal(nextUp?.userId, "user-2");
+    assert.equal(nextUp?.position, 1);
+    assert.equal(nextUp?.status, "almost_ready");
   });
 
   it("returns nextUp as null when the queue empties", async () => {
     await queue.join("user-1", joinInput());
     const result = await queue.serveNext("s1");
-    expect(result.nextUp).toBeNull();
+    assert.equal(result.nextUp, null);
   });
 
   it("returns 409 when nobody is waiting", async () => {
-    await expect(queue.serveNext("s1")).rejects.toMatchObject({ status: 409 });
+    await rejectsWithStatus(queue.serveNext("s1"), 409);
   });
 
   it("returns 404 for an unknown service", async () => {
-    await expect(queue.serveNext("nope")).rejects.toMatchObject({ status: 404 });
+    await rejectsWithStatus(queue.serveNext("nope"), 404);
   });
 });
 
@@ -266,35 +261,33 @@ describe("admin summaries", () => {
     await queue.join("user-2", joinInput({ serviceId: "s1" }));
 
     const summaries = await queue.listAdminQueues();
-    expect(summaries).toHaveLength(3);
+    assert.equal(summaries.length, 3);
 
     const s1 = summaries.find((s) => s.service.id === "s1");
-    expect(s1?.waitingCount).toBe(2);
-    expect(s1?.estimatedWaitMinutes).toBe(30);
+    assert.equal(s1?.waitingCount, 2);
+    assert.equal(s1?.estimatedWaitMinutes, 30);
 
     const s2 = summaries.find((s) => s.service.id === "s2");
-    expect(s2?.waitingCount).toBe(0);
-    expect(s2?.estimatedWaitMinutes).toBe(0);
+    assert.equal(s2?.waitingCount, 0);
+    assert.equal(s2?.estimatedWaitMinutes, 0);
   });
 });
 
 describe("wait estimate for a new joiner", () => {
   it("is one duration for an empty queue", async () => {
-    expect((await queue.getWaitEstimate("s1")).estimatedWaitMinutes).toBe(15);
+    assert.equal((await queue.getWaitEstimate("s1")).estimatedWaitMinutes, 15);
   });
 
   it("grows as people join", async () => {
     await queue.join("user-1", joinInput());
     await queue.join("user-2", joinInput());
     const estimate = await queue.getWaitEstimate("s1");
-    expect(estimate.waitingCount).toBe(2);
-    expect(estimate.estimatedWaitMinutes).toBe(45);
+    assert.equal(estimate.waitingCount, 2);
+    assert.equal(estimate.estimatedWaitMinutes, 45);
   });
 
   it("returns 404 for an unknown service", async () => {
-    await expect(queue.getWaitEstimate("nope")).rejects.toMatchObject({
-      status: 404,
-    });
+    await rejectsWithStatus(queue.getWaitEstimate("nope"), 404);
   });
 });
 
@@ -322,7 +315,7 @@ describe("queue ordering", () => {
   it("orders by arrival when priorities are equal", () => {
     const early = record({ id: "early", joinedAt: "2026-10-22T09:00:00.000Z" });
     const late = record({ id: "late", joinedAt: "2026-10-22T09:05:00.000Z" });
-    expect([late, early].sort(compareEntries).map((e) => e.id)).toEqual([
+    assert.deepEqual([late, early].sort(compareEntries).map((e) => e.id), [
       "early",
       "late",
     ]);
@@ -332,31 +325,35 @@ describe("queue ordering", () => {
     const lowEarly = record({ id: "low", priority: "low", joinedAt: "2026-10-22T09:00:00.000Z" });
     const medium = record({ id: "med", priority: "medium", joinedAt: "2026-10-22T09:10:00.000Z" });
     const highLate = record({ id: "high", priority: "high", joinedAt: "2026-10-22T09:30:00.000Z" });
-    expect(
+    assert.deepEqual(
       [lowEarly, medium, highLate].sort(compareEntries).map((e) => e.id),
-    ).toEqual(["high", "med", "low"]);
+      ["high", "med", "low"],
+    );
   });
 
   describe("public board", () => {
-  it("lists active entries in order with masked names and no private fields", async () => {
-    await queue.join("user-1", joinInput({ customerName: "Alex Johnson", customerEmail: "alex@example.com" }));
-    await queue.join("user-2", joinInput({ customerName: "Maria Garcia" }));
+    it("lists active entries in order with masked names and no private fields", async () => {
+      await queue.join(
+        "user-1",
+        joinInput({ customerName: "Alex Johnson", customerEmail: "alex@example.com" }),
+      );
+      await queue.join("user-2", joinInput({ customerName: "Maria Garcia" }));
 
-    const board = await queue.getPublicBoard("s1");
-    expect(board).toEqual([
-      { position: 1, patient: "Ale J.", date: today, timeSlot: "9:00 AM" },
-      { position: 2, patient: "Mar G.", date: today, timeSlot: "9:00 AM" },
-    ]);
-  });
+      const board = await queue.getPublicBoard("s1");
+      assert.deepEqual(board, [
+        { position: 1, patient: "Ale J.", date: today, timeSlot: "9:00 AM" },
+        { position: 2, patient: "Mar G.", date: today, timeSlot: "9:00 AM" },
+      ]);
+    });
 
-  it("drops people who left", async () => {
-    const entry = await queue.join("user-1", joinInput());
-    await queue.leave(entry.id, "user-1");
-    expect(await queue.getPublicBoard("s1")).toEqual([]);
-  });
+    it("drops people who left", async () => {
+      const entry = await queue.join("user-1", joinInput());
+      await queue.leave(entry.id, "user-1");
+      assert.deepEqual(await queue.getPublicBoard("s1"), []);
+    });
 
-  it("returns 404 for an unknown service", async () => {
-    await expect(queue.getPublicBoard("nope")).rejects.toMatchObject({ status: 404 });
+    it("returns 404 for an unknown service", async () => {
+      await rejectsWithStatus(queue.getPublicBoard("nope"), 404);
+    });
   });
-});
 });
