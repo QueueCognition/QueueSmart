@@ -3,6 +3,7 @@ import { before, beforeEach, describe, it } from "node:test";
 import express from "express";
 import request from "supertest";
 import { config } from "../../src/config/env";
+import { db } from "../../src/db/sqlite";
 import { errorHandler } from "../../src/middleware/errorHandler";
 import { clearNotificationStore } from "../../src/models/notificationStore";
 import { clearQueueStore } from "../../src/models/queueStore";
@@ -67,6 +68,32 @@ let app: ReturnType<typeof buildApp>;
 beforeEach(() => {
   clearQueueStore();
   clearNotificationStore();
+
+  const serviceService = new ServiceService(db);
+
+  if (serviceService.listServices().length === 0) {
+    serviceService.createService({
+      name: "Student ID Card",
+      description: "Student identification card services.",
+      duration: 15,
+      priority: "medium",
+    });
+
+    serviceService.createService({
+      name: "Financial Aid Consultation",
+      description: "Assistance with financial aid questions and applications.",
+      duration: 30,
+      priority: "high",
+    });
+
+    serviceService.createService({
+      name: "DMV License Renewal",
+      description: "License renewal and related documentation services.",
+      duration: 20,
+      priority: "low",
+    });
+  }
+
   app = buildApp();
 });
 

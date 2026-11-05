@@ -78,10 +78,10 @@ function ServiceManagement() {
     if (!duration.trim()) {
       newErrors.duration = 'Expected duration is required.'
     } else if (
-      !Number.isFinite(parsedDuration) ||
+      !Number.isSafeInteger(parsedDuration) ||
       parsedDuration <= 0
     ) {
-      newErrors.duration = 'Duration must be a positive number.'
+      newErrors.duration = 'Duration must be a positive whole number.'
     }
 
     setErrors(newErrors)
@@ -253,7 +253,7 @@ function ServiceManagement() {
                 id="service-duration"
                 type="number"
                 min="1"
-                step="any"
+                step="1"
                 value={duration}
                 onChange={(event) => setDuration(event.target.value)}
                 placeholder="e.g. 30"

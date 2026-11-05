@@ -36,7 +36,7 @@ export function validateServiceInput(input: unknown): ValidationResult {
 
   if (
     typeof data.duration !== "number" ||
-    !Number.isFinite(data.duration) ||
+    !Number.isSafeInteger(data.duration) ||
     data.duration <= 0
   ) {
     errors.push("Duration must be a positive number.");
