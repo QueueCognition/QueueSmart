@@ -32,6 +32,8 @@ export function validateServiceInput(input: unknown): ValidationResult {
 
   if (typeof data.description !== "string" || !data.description.trim()) {
     errors.push("Description is required.");
+  } else if (data.description.trim().length > 2000) {
+    errors.push("Description must be 2000 characters or less.");
   }
 
   if (

@@ -11,6 +11,13 @@ export interface Service {
   isAvailable: boolean;
 }
 
+export interface Queue {
+  id: string;
+  serviceId: string;
+  status: "open" | "closed";
+  createdAt: string;
+}
+
 export interface QueueEntry {
   id: string;
   serviceId: string;

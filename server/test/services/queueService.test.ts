@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { beforeEach, describe, it } from "node:test";
+import { db } from "../../src/db/sqlite";
 import { clearQueueStore } from "../../src/models/queueStore";
 import {
   compareEntries,
@@ -67,6 +68,29 @@ let queue: QueueService;
 
 beforeEach(() => {
   clearQueueStore();
+  const timestamp = new Date().toISOString();
+  const insertService = db.prepare(
+    `INSERT OR IGNORE INTO services
+     (id, name, description, expected_duration, priority)
+     VALUES (?, ?, ?, ?, ?)`,
+  );
+  for (const service of testServices) {
+    insertService.run(
+      service.id,
+      service.name,
+      service.description,
+      service.expectedDuration,
+      service.priority,
+    );
+  }
+  const insertUser = db.prepare(
+    `INSERT OR IGNORE INTO users
+     (id, first_name, last_name, email, role, password_hash, created_at)
+     VALUES (?, 'Test', 'User', ?, 'user', 'test-hash', ?)`,
+  );
+  for (const id of ["user-1", "user-2", "user-3", "someone-else"]) {
+    insertUser.run(id, `${id}@example.com`, timestamp);
+  }
   queue = new QueueService(catalog);
 });
 
@@ -122,6 +146,18 @@ describe("joining a queue", () => {
     await queue.leave(entry.id, "user-1");
     const again = await queue.join("user-1", joinInput());
     assert.equal(again.position, 1);
+
+    const queueStatuses = db
+      .prepare("SELECT status FROM queues WHERE service_id = ? ORDER BY rowid")
+      .all("s1") as { status: string }[];
+    assert.deepEqual(
+      queueStatuses.map(({ status }) => status),
+      ["closed", "open"],
+    );
+    assert.equal(
+      new QueueService(catalog).getHistoryForUser("user-1").length,
+      2,
+    );
   });
 });
 
