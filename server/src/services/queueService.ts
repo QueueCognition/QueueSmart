@@ -1,8 +1,10 @@
 import { randomUUID } from "node:crypto";
 import {
+  closeQueueIfEmpty,
   insertEntry,
   listEntries,
   nextTicketSequence,
+  updateEntry,
 } from "../models/queueStore";
 import type {
   PublicQueueRow,
@@ -105,6 +107,7 @@ export class QueueService {
       entry.position = index + 1;
       entry.estimatedWaitMinutes = estimateWaitMinutes(entry.position, service);
       entry.status = entry.position === 1 ? "almost_ready" : "waiting";
+      updateEntry(entry);
     });
   }
 
@@ -141,7 +144,7 @@ export class QueueService {
     const entry: QueueEntryRecord = {
       id: randomUUID(),
       serviceId: service.id,
-      position: 0,
+      position: 1,
       estimatedWaitMinutes: 0,
       status: "waiting",
       joinedAt: now,
@@ -164,7 +167,7 @@ export class QueueService {
       "queue_update"
     );
 
-    return { ...entry };
+    return { ...this.findEntry(entry.id) };
   }
 
   async leave(entryId: string, userId: string): Promise<QueueEntryRecord> {
@@ -182,6 +185,7 @@ export class QueueService {
     const wasFirst = this.activeEntries(entry.serviceId)[0]?.id === entry.id;
 
     closeEntry(entry, "cancelled");
+    updateEntry(entry);
     createNotification(
       userId,
       `You left the queue for ${service?.name ?? entry.serviceId}.`,
@@ -190,6 +194,7 @@ export class QueueService {
 
     if (service) {
       this.refresh(service);
+      closeQueueIfEmpty(service.id);
 
       if (wasFirst) {
         const [nextUp] = this.activeEntries(service.id);
@@ -272,7 +277,9 @@ export class QueueService {
     if (!next) throw new HttpError(409, "No one is waiting for this service");
 
     closeEntry(next, "served");
+    updateEntry(next);
     this.refresh(service);
+    closeQueueIfEmpty(service.id);
 
     const [nextUp] = this.activeEntries(serviceId);
     
