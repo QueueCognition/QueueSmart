@@ -24,6 +24,13 @@ export function createServiceRoutes(serviceService: ServiceService) {
     controller.updateService
   );
 
+  router.patch(
+    "/:id/availability",
+    requireAuth,
+    requireStaff,
+    controller.setServiceAvailability
+  );
+
   router.delete(
     "/:id",
     requireAuth,

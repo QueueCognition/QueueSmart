@@ -8,6 +8,7 @@ export type Service = {
   description: string
   duration: number
   priority: Priority
+  isAvailable: boolean
 }
 
 type ApiResponse<T> = {
@@ -49,7 +50,7 @@ export function getServices(): Promise<Service[]> {
 }
 
 export function createService(
-  service: Omit<Service, 'id'>,
+  service: Omit<Service, 'id' | 'isAvailable'>,
 ): Promise<Service> {
   return request<Service>(API_URL, {
     method: 'POST',
@@ -59,11 +60,21 @@ export function createService(
 
 export function updateService(
   id: number,
-  service: Omit<Service, 'id'>,
+  service: Omit<Service, 'id' | 'isAvailable'>,
 ): Promise<Service> {
   return request<Service>(`${API_URL}/${id}`, {
     method: 'PUT',
     body: JSON.stringify(service),
+  })
+}
+
+export function setServiceAvailability(
+  id: number,
+  isAvailable: boolean,
+): Promise<Service> {
+  return request<Service>(`${API_URL}/${id}/availability`, {
+    method: 'PATCH',
+    body: JSON.stringify({ isAvailable }),
   })
 }
 

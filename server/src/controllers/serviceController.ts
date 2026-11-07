@@ -63,6 +63,44 @@ export function createServiceController(serviceService: ServiceService) {
     }
   }
 
+  function setServiceAvailability(req: Request, res: Response): void {
+    const id = Number(req.params.id);
+
+    if (!Number.isSafeInteger(id) || id <= 0) {
+      res.status(400).json({
+        success: false,
+        errors: ["Service ID must be a positive integer."],
+      });
+      return;
+    }
+
+    const body = req.body as { isAvailable?: unknown } | null;
+    const isAvailable = body?.isAvailable;
+
+    if (typeof isAvailable !== "boolean") {
+      res.status(400).json({
+        success: false,
+        errors: ["isAvailable must be a boolean."],
+      });
+      return;
+    }
+
+    const service = serviceService.setAvailability(id, isAvailable);
+
+    if (!service) {
+      res.status(404).json({
+        success: false,
+        errors: ["Service not found."],
+      });
+      return;
+    }
+
+    res.status(200).json({
+      success: true,
+      data: service,
+    });
+  }
+
   function removeService(req: Request, res: Response): void {
     const id = Number(req.params.id);
 
@@ -94,6 +132,7 @@ export function createServiceController(serviceService: ServiceService) {
     listServices,
     createService,
     updateService,
+    setServiceAvailability,
     removeService,
   };
 }

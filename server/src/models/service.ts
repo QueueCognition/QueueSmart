@@ -6,4 +6,5 @@ export interface Service {
   description: string;
   duration: number;
   priority: Priority;
+  isAvailable: boolean;
 }

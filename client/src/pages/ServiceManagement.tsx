@@ -5,6 +5,7 @@ import {
   createService,
   updateService,
   deleteService,
+  setServiceAvailability,
 } from '../services/serviceApi'
 import type { Service, Priority } from '../services/serviceApi'
 import '../styles/servicemanagement.css'
@@ -143,6 +144,36 @@ function ServiceManagement() {
     setPriority(service.priority)
     setErrors({})
     setApiError('')
+  }
+
+  const handleToggleAvailability = async (service: Service) => {
+    if (saving) {
+      return
+    }
+
+    setSaving(true)
+    setApiError('')
+
+    try {
+      const updated = await setServiceAvailability(
+        service.id,
+        !service.isAvailable,
+      )
+
+      setServices((currentServices) =>
+        currentServices.map((item) =>
+          item.id === updated.id ? updated : item,
+        ),
+      )
+    } catch (error: unknown) {
+      setApiError(
+        error instanceof Error
+          ? error.message
+          : 'Failed to update the service availability.',
+      )
+    } finally {
+      setSaving(false)
+    }
   }
 
   const handleRemove = async (id: number) => {
@@ -335,6 +366,11 @@ function ServiceManagement() {
                   >
                     {service.priority}
                   </span>
+                  {!service.isAvailable && (
+                    <span className="availability-pill availability-pill--paused">
+                      Paused
+                    </span>
+                  )}
                 </div>
 
                 <p>{service.description}</p>
@@ -352,6 +388,15 @@ function ServiceManagement() {
                   disabled={saving}
                 >
                   Edit
+                </button>
+
+                <button
+                  type="button"
+                  className="service-action service-action--availability"
+                  onClick={() => handleToggleAvailability(service)}
+                  disabled={saving}
+                >
+                  {service.isAvailable ? 'Pause' : 'Resume'}
                 </button>
 
                 <button

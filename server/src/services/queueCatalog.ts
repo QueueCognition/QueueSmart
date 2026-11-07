@@ -10,7 +10,7 @@ function toQueueService(service: ManagedService): Service {
     description: service.description,
     expectedDuration: service.duration,
     priority: service.priority,
-    isAvailable: true,
+    isAvailable: service.isAvailable,
   };
 }
 

@@ -223,6 +223,34 @@ textarea.service-input {
   background: #cbd8ef;
 }
 
+.service-action--availability {
+  background: transparent;
+  border: 1px solid var(--border-light);
+  color: var(--navy-700);
+}
+
+.service-action--availability:hover:not(:disabled) {
+  background: var(--navy-100);
+}
+
+.availability-pill {
+  display: inline-block;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.availability-pill--paused {
+  background: #f3f4f6;
+  color: #4b5563;
+}
+
+.service-action:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
 .service-action--remove {
   background: transparent;
   border: 1px solid #e0b8b3;
