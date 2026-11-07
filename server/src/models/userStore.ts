@@ -5,6 +5,7 @@ import { hashPassword } from "../utils/password";
 export interface StoredUser extends User {
   passwordHash: string;
   createdAt: string;
+  tokenVersion: number;
 }
 
 export interface NewUser {
@@ -19,7 +20,7 @@ export interface NewUser {
 const ROLES: readonly UserRole[] = ["user", "staff", "admin"];
 
 const SELECT_COLUMNS =
-  "id, first_name, last_name, email, role, password_hash, created_at";
+  "id, first_name, last_name, email, role, password_hash, created_at, token_version";
 
 function normalizeEmail(email: string): string {
   return email.trim().toLowerCase();
@@ -38,6 +39,7 @@ function mapRow(row: Record<string, unknown>): StoredUser {
     role: normalizeRole(row.role),
     passwordHash: String(row.password_hash),
     createdAt: String(row.created_at),
+    tokenVersion: typeof row.token_version === "number" ? row.token_version : 0,
   };
 }
 
@@ -72,10 +74,11 @@ export function insertUser(input: NewUser): StoredUser {
     role: input.role,
     passwordHash: hashPassword(input.password),
     createdAt: new Date().toISOString(),
+    tokenVersion: 0,
   };
 
   db.prepare(
-    `INSERT INTO users (${SELECT_COLUMNS}) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO users (${SELECT_COLUMNS}) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
   ).run(
     record.id,
     record.firstName,
@@ -84,6 +87,7 @@ export function insertUser(input: NewUser): StoredUser {
     record.role,
     record.passwordHash,
     record.createdAt,
+    record.tokenVersion,
   );
 
   return record;
@@ -132,10 +136,9 @@ export function updateUserName(
 }
 
 export function updateUserPassword(id: string, password: string): void {
-  db.prepare("UPDATE users SET password_hash = ? WHERE id = ?").run(
-    hashPassword(password),
-    id,
-  );
+  db.prepare(
+    "UPDATE users SET password_hash = ?, token_version = token_version + 1 WHERE id = ?",
+  ).run(hashPassword(password), id);
 }
 
 export function toProfileUser(user: StoredUser): ProfileUser {

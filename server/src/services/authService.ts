@@ -34,6 +34,8 @@ const INVALID_SESSION_MESSAGE =
   "Invalid or expired session. Please sign in again.";
 const NETWORK_CHANGED_MESSAGE =
   "Your session ended because your network address changed. Please sign in again.";
+const PASSWORD_CHANGED_MESSAGE =
+  "Your password was changed. Please sign in again.";
 
 function createSession(user: StoredUser, boundIp: string | null): AuthSession {
   const { token, expiresAt } = issueToken(
@@ -42,6 +44,7 @@ function createSession(user: StoredUser, boundIp: string | null): AuthSession {
     boundIp,
     config.jwtSecret,
     config.tokenTtlSeconds,
+    user.tokenVersion,
   );
 
   return { user: toPublicUser(user), token, expiresAt, boundIp };
@@ -112,6 +115,10 @@ export async function verifySession(
 
   const user = findUserById(claims.sub);
   if (!user) throw new AuthError(INVALID_SESSION_MESSAGE, 401);
+
+  if (claims.ver !== user.tokenVersion) {
+    throw new AuthError(PASSWORD_CHANGED_MESSAGE, 401);
+  }
 
   return toPublicUser(user);
 }

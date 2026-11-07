@@ -38,7 +38,8 @@ function actingAs(id: string, role: UserRole) {
     role,
     null,
     config.jwtSecret,
-    config.tokenTtlSeconds
+    config.tokenTtlSeconds,
+    0
   );
 
   return { Authorization: `Bearer ${token}` };

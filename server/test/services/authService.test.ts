@@ -221,6 +221,7 @@ describe("verifySession", () => {
       null,
       config.jwtSecret,
       60,
+      0,
     );
 
     await assert.rejects(
@@ -360,5 +361,48 @@ describe("changePassword", () => {
         return true;
       },
     );
+  });
+});
+
+describe("session invalidation after a password change", () => {
+  const email = "session.reset@example.com";
+
+  before(() => {
+    insertUser({
+      id: "u_session_reset",
+      firstName: "Session",
+      lastName: "Reset",
+      email,
+      password: PASSWORD,
+      role: "user",
+    });
+  });
+
+  it("rejects the previous token and accepts a freshly issued one", async () => {
+    const previous = await login({ email, password: PASSWORD }, "127.0.0.1");
+    await verifySession(previous.token, "127.0.0.1");
+
+    await changePassword("u_session_reset", {
+      currentPassword: PASSWORD,
+      newPassword: "brand-new-456",
+    });
+
+    await assert.rejects(
+      verifySession(previous.token, "127.0.0.1"),
+      (error: unknown) => {
+        assert.ok(error instanceof AuthError);
+        assert.equal(error.status, 401);
+        assert.match(error.message, /password was changed/i);
+        return true;
+      },
+    );
+
+    const next = await login(
+      { email, password: "brand-new-456" },
+      "127.0.0.1",
+    );
+    const user = await verifySession(next.token, "127.0.0.1");
+
+    assert.equal(user.id, "u_session_reset");
   });
 });

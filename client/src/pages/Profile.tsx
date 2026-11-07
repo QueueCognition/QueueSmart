@@ -58,7 +58,6 @@ function Profile() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [passwordErrors, setPasswordErrors] = useState<PasswordErrors>({});
   const [passwordFormError, setPasswordFormError] = useState("");
-  const [passwordSuccess, setPasswordSuccess] = useState("");
   const [changingPassword, setChangingPassword] = useState(false);
 
   useEffect(() => {
@@ -184,20 +183,15 @@ function Profile() {
   async function handlePasswordSubmit(event: React.FormEvent) {
     event.preventDefault();
     setPasswordFormError("");
-    setPasswordSuccess("");
     if (!validatePassword()) return;
 
     setChangingPassword(true);
     try {
       await changePassword({ currentPassword, newPassword });
 
-      setCurrentPassword("");
-      setNewPassword("");
-      setConfirmPassword("");
-      setPasswordSuccess(
-        "Password updated successfully. You are still signed in.",
+      logout(
+        "Password updated. Please sign in again with your new password.",
       );
-      push({ message: "Password updated", type: "status_change" });
     } catch (error) {
       if (error instanceof AuthError) {
         if (error.status === 401) {
@@ -342,12 +336,6 @@ function Profile() {
           {passwordFormError && (
             <div className="auth__alert" role="alert">
               {passwordFormError}
-            </div>
-          )}
-
-          {passwordSuccess && (
-            <div className="auth__alert auth__alert--success" role="status">
-              {passwordSuccess}
             </div>
           )}
 
