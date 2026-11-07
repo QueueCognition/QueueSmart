@@ -23,29 +23,41 @@ function fieldErrors(action: () => unknown): Record<string, string> {
 describe("validateLogin", () => {
   it("trims the email and keeps the password", () => {
     assert.deepEqual(
-      validateLogin({ email: "  demo@queuesmart.dev ", password: "password123" }),
+      validateLogin({
+        email: "  demo@queuesmart.dev ",
+        password: "password123",
+      }),
       { email: "demo@queuesmart.dev", password: "password123" },
     );
   });
 
   it("reports missing credentials", () => {
-    assert.deepEqual(fieldErrors(() => validateLogin({})), {
-      email: "Email is required",
-      password: "Password is required",
-    });
+    assert.deepEqual(
+      fieldErrors(() => validateLogin({})),
+      {
+        email: "Email is required",
+        password: "Password is required",
+      },
+    );
   });
 
   it("reports an invalid email format", () => {
-    assert.deepEqual(fieldErrors(() => validateLogin({ email: "nope", password: "x" })), {
-      email: "Enter a valid email address",
-    });
+    assert.deepEqual(
+      fieldErrors(() => validateLogin({ email: "nope", password: "x" })),
+      {
+        email: "Enter a valid email address",
+      },
+    );
   });
 
   it("treats non-object bodies as empty", () => {
-    assert.deepEqual(fieldErrors(() => validateLogin(null)), {
-      email: "Email is required",
-      password: "Password is required",
-    });
+    assert.deepEqual(
+      fieldErrors(() => validateLogin(null)),
+      {
+        email: "Email is required",
+        password: "Password is required",
+      },
+    );
   });
 });
 
@@ -68,12 +80,15 @@ describe("validateRegister", () => {
   });
 
   it("reports every missing field", () => {
-    assert.deepEqual(fieldErrors(() => validateRegister({})), {
-      firstName: "First name is required",
-      lastName: "Last name is required",
-      email: "Email is required",
-      password: "Password is required",
-    });
+    assert.deepEqual(
+      fieldErrors(() => validateRegister({})),
+      {
+        firstName: "First name is required",
+        lastName: "Last name is required",
+        email: "Email is required",
+        password: "Password is required",
+      },
+    );
   });
 
   it("reports overlong names", () => {
@@ -107,15 +122,21 @@ describe("validateRegister", () => {
 
 describe("validatePasswordReset", () => {
   it("accepts and trims a valid email", () => {
-    assert.deepEqual(validatePasswordReset({ email: " demo@queuesmart.dev " }), {
-      email: "demo@queuesmart.dev",
-    });
+    assert.deepEqual(
+      validatePasswordReset({ email: " demo@queuesmart.dev " }),
+      {
+        email: "demo@queuesmart.dev",
+      },
+    );
   });
 
   it("rejects an invalid email", () => {
-    assert.deepEqual(fieldErrors(() => validatePasswordReset({ email: "nope" })), {
-      email: "Enter a valid email address",
-    });
+    assert.deepEqual(
+      fieldErrors(() => validatePasswordReset({ email: "nope" })),
+      {
+        email: "Enter a valid email address",
+      },
+    );
   });
 });
 
@@ -131,9 +152,12 @@ describe("validateProfileUpdate", () => {
   });
 
   it("rejects an empty name", () => {
-    assert.deepEqual(fieldErrors(() => validateProfileUpdate({ firstName: "" })), {
-      firstName: "First name is required",
-    });
+    assert.deepEqual(
+      fieldErrors(() => validateProfileUpdate({ firstName: "" })),
+      {
+        firstName: "First name is required",
+      },
+    );
   });
 
   it("rejects an overlong name", () => {
@@ -167,10 +191,13 @@ describe("validatePasswordChange", () => {
   });
 
   it("reports both missing passwords", () => {
-    assert.deepEqual(fieldErrors(() => validatePasswordChange({})), {
-      currentPassword: "Current password is required",
-      newPassword: "Password is required",
-    });
+    assert.deepEqual(
+      fieldErrors(() => validatePasswordChange({})),
+      {
+        currentPassword: "Current password is required",
+        newPassword: "Password is required",
+      },
+    );
   });
 
   it("requires at least 8 characters for the new password", () => {

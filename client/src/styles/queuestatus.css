@@ -100,7 +100,7 @@
 
 .queue-table-card {
   width: 100%;
-  max-width: 440px; 
+  max-width: 440px;
   background: var(--bg-card);
   border: 1px solid var(--border-light);
   border-radius: 16px;

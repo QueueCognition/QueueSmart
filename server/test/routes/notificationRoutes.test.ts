@@ -10,7 +10,10 @@ import { clearNotificationStore } from "../../src/models/notificationStore";
 import { clearQueueStore } from "../../src/models/queueStore";
 import { insertUser } from "../../src/models/userStore";
 import { createNotificationRoutes } from "../../src/routes/notificationRoutes";
-import { createAdminQueueRoutes, createQueueRoutes } from "../../src/routes/queueRoutes";
+import {
+  createAdminQueueRoutes,
+  createQueueRoutes,
+} from "../../src/routes/queueRoutes";
 import { createQueueCatalog } from "../../src/services/queueCatalog";
 import { QueueService } from "../../src/services/queueService";
 import { ServiceService } from "../../src/services/serviceService";
@@ -59,7 +62,9 @@ function joinBody() {
 }
 
 function buildApp() {
-  const queueService = new QueueService(createQueueCatalog(new ServiceService()));
+  const queueService = new QueueService(
+    createQueueCatalog(new ServiceService()),
+  );
   const app = express();
 
   app.use(express.json());
@@ -195,7 +200,7 @@ describe("PATCH /api/notifications/:notificationId/read", () => {
   it("marks the user's notification as read", async () => {
     const notification = createNotification(
       "user-a",
-      "Your appointment is ready."
+      "Your appointment is ready.",
     );
 
     const res = await request(app)
@@ -208,17 +213,17 @@ describe("PATCH /api/notifications/:notificationId/read", () => {
   });
 
   it("does not let a user mark another user's notification as read", async () => {
-  const notification = createNotification(
-    "user-a",
-    "Your appointment is ready."
-  );
+    const notification = createNotification(
+      "user-a",
+      "Your appointment is ready.",
+    );
 
-  const res = await request(app)
-    .patch(`/api/notifications/${notification.id}/read`)
-    .set(actingAs("user-b"));
+    const res = await request(app)
+      .patch(`/api/notifications/${notification.id}/read`)
+      .set(actingAs("user-b"));
 
-  assert.equal(res.status, 404);
-});
+    assert.equal(res.status, 404);
+  });
 });
 
 describe("PATCH /api/notifications/read", () => {
@@ -244,9 +249,11 @@ describe("PATCH /api/notifications/read", () => {
     assert.equal(userARes.status, 200);
     assert.equal(userBRes.status, 200);
 
-    assert.ok(userARes.body.every(
-      (notification: { read: boolean }) => notification.read === true
-    ));
+    assert.ok(
+      userARes.body.every(
+        (notification: { read: boolean }) => notification.read === true,
+      ),
+    );
 
     assert.equal(userBRes.body[0].read, false);
   });

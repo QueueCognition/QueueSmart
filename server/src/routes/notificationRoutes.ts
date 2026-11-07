@@ -1,6 +1,10 @@
 import { Router } from "express";
 import { requireAuth } from "../middleware/requireAuth";
-import { getNotificationsForUser, markNotificationAsRead, markAllNotificationsAsRead } from "../services/notificationService";
+import {
+  getNotificationsForUser,
+  markNotificationAsRead,
+  markAllNotificationsAsRead,
+} from "../services/notificationService";
 import { currentUser } from "../utils/currentUser";
 
 export function createNotificationRoutes() {
@@ -12,7 +16,6 @@ export function createNotificationRoutes() {
 
     res.json(notifications);
   });
-
 
   router.patch("/read", requireAuth, (_req, res) => {
     const user = currentUser(res);
@@ -28,14 +31,11 @@ export function createNotificationRoutes() {
     const notificationId = req.params.notificationId;
 
     if (typeof notificationId !== "string") {
-    res.status(400).json({ message: "Invalid notification ID" });
-    return;
+      res.status(400).json({ message: "Invalid notification ID" });
+      return;
     }
 
-    const notification = markNotificationAsRead(
-    user.id,
-    notificationId
-    );
+    const notification = markNotificationAsRead(user.id, notificationId);
     if (!notification) {
       res.status(404).json({ message: "Notification not found" });
       return;
@@ -43,7 +43,6 @@ export function createNotificationRoutes() {
 
     res.json(notification);
   });
-
 
   return router;
 }

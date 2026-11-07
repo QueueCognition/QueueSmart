@@ -1,9 +1,10 @@
 import type { Notification } from "../types/queue";
 import { getStoredAccessToken } from "./authService";
 
-const API_BASE_URL = (
-  import.meta.env.VITE_API_BASE_URL || "/api"
-).replace(/\/$/, "");
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "/api").replace(
+  /\/$/,
+  "",
+);
 
 const NOTIFICATION_URL = `${API_BASE_URL}/notifications`;
 
@@ -33,7 +34,7 @@ export async function getNotifications(): Promise<Notification[]> {
 }
 
 export async function markNotificationAsRead(
-  notificationId: string
+  notificationId: string,
 ): Promise<Notification> {
   const headers = new Headers();
   const token = getStoredAccessToken();
@@ -44,7 +45,7 @@ export async function markNotificationAsRead(
 
   const response = await fetch(
     `${NOTIFICATION_URL}/${encodeURIComponent(notificationId)}/read`,
-    { method: "PATCH", headers }
+    { method: "PATCH", headers },
   );
 
   if (!response.ok) {

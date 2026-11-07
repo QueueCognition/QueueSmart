@@ -78,7 +78,10 @@ describe("updateUserName", () => {
   });
 
   it("returns undefined for an unknown user", () => {
-    assert.equal(updateUserName("u_missing", { firstName: "Nobody" }), undefined);
+    assert.equal(
+      updateUserName("u_missing", { firstName: "Nobody" }),
+      undefined,
+    );
   });
 });
 

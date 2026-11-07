@@ -21,9 +21,7 @@ export async function getAppointments(
 export async function getAppointmentServiceName(
   serviceId: string,
 ): Promise<string> {
-  const service = mockServices.find(
-    (service) => service.id === serviceId,
-  );
+  const service = mockServices.find((service) => service.id === serviceId);
 
   return service?.name ?? "Unknown Service";
 }

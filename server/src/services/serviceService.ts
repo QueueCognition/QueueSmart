@@ -1,4 +1,3 @@
-
 import type { DatabaseSync } from "node:sqlite";
 import { db } from "../db/sqlite";
 import type { Priority, Service } from "../models/service";

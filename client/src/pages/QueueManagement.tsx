@@ -3,13 +3,8 @@ import { useAdminQueues } from "../hooks/useAdminQueues";
 import "../styles/queuemanagement.css";
 
 function QueueManagement() {
-  const {
-    summaries,
-    loading,
-    error,
-    servingServiceId,
-    serveNext,
-  } = useAdminQueues();
+  const { summaries, loading, error, servingServiceId, serveNext } =
+    useAdminQueues();
 
   const [selectedServiceId, setSelectedServiceId] = useState("");
 

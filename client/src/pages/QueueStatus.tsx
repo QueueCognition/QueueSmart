@@ -2,17 +2,18 @@ import "../styles/queuestatus.css";
 import { useEffect, useState } from "react";
 import { useQueueStatus } from "../hooks/useQueueStatus";
 import { useAuth } from "../context/AuthContext";
-import {
-  getPublicQueueBoard,
-  getServices,
-} from "../services/queueService";
+import { getPublicQueueBoard, getServices } from "../services/queueService";
 import type { PublicQueueRow, Service } from "../types/queue";
 
 const STAGES = ["waiting", "almost_ready", "served"];
 
 function QueueStatus() {
   const { isAuthenticated } = useAuth();
-  const { entry, error: statusError, loading: statusLoading } = useQueueStatus();
+  const {
+    entry,
+    error: statusError,
+    loading: statusLoading,
+  } = useQueueStatus();
   const [services, setServices] = useState<Service[]>([]);
   const [serviceId, setServiceId] = useState("");
   const [board, setBoard] = useState<PublicQueueRow[]>([]);
@@ -56,7 +57,9 @@ function QueueStatus() {
       } catch (error) {
         if (active) {
           setBoardError(
-            error instanceof Error ? error.message : "Failed to load the queue.",
+            error instanceof Error
+              ? error.message
+              : "Failed to load the queue.",
           );
           setBoardLoadedFor(boardServiceId);
         }
@@ -137,7 +140,6 @@ function QueueStatus() {
             ))}
           </select>
         )}
-
         {boardError && <p role="alert">{boardError}</p>}
         {!boardServiceId && !boardError ? (
           <p>No services are available.</p>

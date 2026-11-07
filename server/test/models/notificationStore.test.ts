@@ -43,7 +43,7 @@ function makeNotification(
   id: string,
   userId: string,
   read = false,
-  timestamp = new Date().toISOString()
+  timestamp = new Date().toISOString(),
 ): StoredNotification {
   return {
     id,
@@ -68,23 +68,20 @@ describe("insertNotification and listNotificationsForUser", () => {
   });
   it("only returns notifications belonging to the requested user, newest first", () => {
     const older = makeNotification(
-        "notification-older",
-        userA,
-        false,
-        "2026-11-06T10:00:00.000Z"
+      "notification-older",
+      userA,
+      false,
+      "2026-11-06T10:00:00.000Z",
     );
 
     const newer = makeNotification(
-        "notification-newer",
-        userA,
-        false,
-        "2026-11-06T12:00:00.000Z"
+      "notification-newer",
+      userA,
+      false,
+      "2026-11-06T12:00:00.000Z",
     );
 
-    const otherUser = makeNotification(
-        "notification-user-b",
-        userB
-    );
+    const otherUser = makeNotification("notification-user-b", userB);
 
     insertNotification(older);
     insertNotification(otherUser);
@@ -98,7 +95,7 @@ describe("insertNotification and listNotificationsForUser", () => {
 
     assert.equal(results[0].id, "notification-newer");
     assert.equal(results[1].id, "notification-older");
-    });
+  });
 });
 
 describe("markNotificationRead", () => {
@@ -124,7 +121,7 @@ describe("markNotificationRead", () => {
     const results = listNotificationsForUser(userA);
     assert.ok(results[0]);
     assert.equal(results[0].read, false);
-    });
+  });
 });
 
 describe("markAllNotificationsRead", () => {
@@ -139,7 +136,10 @@ describe("markAllNotificationsRead", () => {
     const userBResults = listNotificationsForUser(userB);
 
     assert.equal(userAResults.length, 2);
-    assert.equal(userAResults.every((notification) => notification.read), true);
+    assert.equal(
+      userAResults.every((notification) => notification.read),
+      true,
+    );
 
     assert.equal(userBResults.length, 1);
     assert.equal(userBResults[0]?.read, false);

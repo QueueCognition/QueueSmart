@@ -189,9 +189,7 @@ function Profile() {
     try {
       await changePassword({ currentPassword, newPassword });
 
-      logout(
-        "Password updated. Please sign in again with your new password.",
-      );
+      logout("Password updated. Please sign in again with your new password.");
     } catch (error) {
       if (error instanceof AuthError) {
         if (error.status === 401) {
@@ -253,7 +251,11 @@ function Profile() {
             </div>
           )}
 
-          <form className="auth__form" onSubmit={handleDetailsSubmit} noValidate>
+          <form
+            className="auth__form"
+            onSubmit={handleDetailsSubmit}
+            noValidate
+          >
             <div className="auth__row">
               <div className="auth__field">
                 <label className="auth__label" htmlFor="firstName">
@@ -339,7 +341,11 @@ function Profile() {
             </div>
           )}
 
-          <form className="auth__form" onSubmit={handlePasswordSubmit} noValidate>
+          <form
+            className="auth__form"
+            onSubmit={handlePasswordSubmit}
+            noValidate
+          >
             <div className="auth__field">
               <label className="auth__label" htmlFor="currentPassword">
                 Current password

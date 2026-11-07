@@ -4,7 +4,11 @@ import { useEffect, useState } from "react";
 import "../styles/dashboard.css";
 import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { getMyQueue, getQueueHistory, getServices } from "../services/queueService"; 
+import {
+  getMyQueue,
+  getQueueHistory,
+  getServices,
+} from "../services/queueService";
 import type { QueueEntry, Service } from "../types/queue";
 
 function Dashboard() {
@@ -106,9 +110,7 @@ function Dashboard() {
           <p className="dashboard-queue-label">Your position in the queue</p>
           {entry ? (
             <>
-              <p className="dashboard-queue-number">
-                #{entry.position}
-              </p>
+              <p className="dashboard-queue-number">#{entry.position}</p>
 
               <p className="dashboard-wait">
                 Estimated wait:{" "}
@@ -183,7 +185,9 @@ function Dashboard() {
 
                 return (
                   <li key={item.id}>
-                    <strong>{service?.name ?? `Service ${item.serviceId}`}</strong>
+                    <strong>
+                      {service?.name ?? `Service ${item.serviceId}`}
+                    </strong>
                     <br />
                     {item.date ?? "Date unavailable"}
                     {item.timeSlot ? ` at ${item.timeSlot}` : ""}
@@ -207,10 +211,9 @@ function Dashboard() {
           <h2>Notifications</h2>
 
           <div className="dashboard-notifications">
-            {notifications.filter((notification) => !notification.read).length === 0 ? (
-              <p className="notifications-empty">
-                You're all caught up!
-              </p>
+            {notifications.filter((notification) => !notification.read)
+              .length === 0 ? (
+              <p className="notifications-empty">You're all caught up!</p>
             ) : (
               notifications
                 .filter((notification) => !notification.read)

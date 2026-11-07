@@ -80,10 +80,7 @@ describe("Service Management", () => {
 
       const secondInstance = new ServiceService(database);
       assert.equal(secondInstance.listServices().length, 1);
-      assert.equal(
-        secondInstance.listServices()[0]?.name,
-        "Passport Services",
-      );
+      assert.equal(secondInstance.listServices()[0]?.name, "Passport Services");
     } finally {
       database.close();
     }
@@ -114,10 +111,7 @@ describe("Service Management", () => {
     try {
       const serviceService = new ServiceService(database);
 
-      assert.equal(
-        serviceService.updateService(999, validService),
-        undefined,
-      );
+      assert.equal(serviceService.updateService(999, validService), undefined);
     } finally {
       database.close();
     }
@@ -241,9 +235,7 @@ describe("Service Management", () => {
     });
 
     assert.equal(result.valid, false);
-    assert.ok(
-      result.errors.includes("Duration must be a positive number."),
-    );
+    assert.ok(result.errors.includes("Duration must be a positive number."));
   });
 
   it("rejects a fractional duration", () => {
@@ -262,8 +254,6 @@ describe("Service Management", () => {
     });
 
     assert.equal(result.valid, false);
-    assert.ok(
-      result.errors.includes("Priority must be low, medium, or high."),
-    );
+    assert.ok(result.errors.includes("Priority must be low, medium, or high."));
   });
 });

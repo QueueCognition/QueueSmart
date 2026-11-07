@@ -16,12 +16,16 @@ function assertUnauthorized(fn: () => unknown): void {
 
 describe("currentUser", () => {
   it("returns the id and role of a logged-in user", () => {
-    const user = currentUser(responseWith({ id: "u_demo", role: "user", email: "x@y.com" }));
+    const user = currentUser(
+      responseWith({ id: "u_demo", role: "user", email: "x@y.com" }),
+    );
     assert.deepEqual(user, { id: "u_demo", role: "user" });
   });
 
   it("unwraps a session object that holds the user", () => {
-    const user = currentUser(responseWith({ user: { id: "u_admin", role: "admin" }, token: "t" }));
+    const user = currentUser(
+      responseWith({ user: { id: "u_admin", role: "admin" }, token: "t" }),
+    );
     assert.deepEqual(user, { id: "u_admin", role: "admin" });
   });
 
@@ -30,10 +34,14 @@ describe("currentUser", () => {
   });
 
   it("throws 401 for an unknown role", () => {
-    assertUnauthorized(() => currentUser(responseWith({ id: "u1", role: "superuser" })));
+    assertUnauthorized(() =>
+      currentUser(responseWith({ id: "u1", role: "superuser" })),
+    );
   });
 
   it("throws 401 when the id is not a string", () => {
-    assertUnauthorized(() => currentUser(responseWith({ id: 7, role: "user" })));
+    assertUnauthorized(() =>
+      currentUser(responseWith({ id: 7, role: "user" })),
+    );
   });
 });

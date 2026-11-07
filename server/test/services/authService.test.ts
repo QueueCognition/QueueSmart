@@ -106,10 +106,7 @@ describe("register", () => {
     assert.equal(session.user.email, "unit.test@example.com");
     assert.equal(session.user.role, "user");
     assert.equal(session.boundIp, "10.0.0.1");
-    assert.equal(
-      findUserByEmail("unit.test@example.com")?.id,
-      session.user.id,
-    );
+    assert.equal(findUserByEmail("unit.test@example.com")?.id, session.user.id);
   });
 
   it("rejects a duplicate email regardless of casing", async () => {
@@ -256,21 +253,15 @@ describe("getProfile", () => {
     ]);
     assert.equal(profile.id, "u_profile");
     assert.equal(profile.email, "profile.owner@example.com");
-    assert.equal(
-      profile.createdAt,
-      findUserById("u_profile")?.createdAt,
-    );
+    assert.equal(profile.createdAt, findUserById("u_profile")?.createdAt);
   });
 
   it("rejects an unknown user", async () => {
-    await assert.rejects(
-      getProfile("u_missing_profile"),
-      (error: unknown) => {
-        assert.ok(error instanceof AuthError);
-        assert.equal(error.status, 401);
-        return true;
-      },
-    );
+    await assert.rejects(getProfile("u_missing_profile"), (error: unknown) => {
+      assert.ok(error instanceof AuthError);
+      assert.equal(error.status, 401);
+      return true;
+    });
   });
 });
 
@@ -397,10 +388,7 @@ describe("session invalidation after a password change", () => {
       },
     );
 
-    const next = await login(
-      { email, password: "brand-new-456" },
-      "127.0.0.1",
-    );
+    const next = await login({ email, password: "brand-new-456" }, "127.0.0.1");
     const user = await verifySession(next.token, "127.0.0.1");
 
     assert.equal(user.id, "u_session_reset");

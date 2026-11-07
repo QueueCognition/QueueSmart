@@ -60,7 +60,10 @@ function statusIs(error: unknown, status: number): boolean {
   return true;
 }
 
-async function rejectsWithStatus(promise: Promise<unknown>, status: number): Promise<void> {
+async function rejectsWithStatus(
+  promise: Promise<unknown>,
+  status: number,
+): Promise<void> {
   await assert.rejects(promise, (error: unknown) => statusIs(error, status));
 }
 
@@ -129,11 +132,17 @@ describe("joining a queue", () => {
   });
 
   it("rejects an unknown service with 404", async () => {
-    await rejectsWithStatus(queue.join("user-1", joinInput({ serviceId: "nope" })), 404);
+    await rejectsWithStatus(
+      queue.join("user-1", joinInput({ serviceId: "nope" })),
+      404,
+    );
   });
 
   it("rejects an unavailable service with 409", async () => {
-    await rejectsWithStatus(queue.join("user-1", joinInput({ serviceId: "s3" })), 409);
+    await rejectsWithStatus(
+      queue.join("user-1", joinInput({ serviceId: "s3" })),
+      409,
+    );
   });
 
   it("rejects joining the same service twice with 409", async () => {
@@ -171,7 +180,10 @@ describe("leaving a queue", () => {
     assert.equal(left.status, "cancelled");
 
     const { waitingList } = await queue.getAdminQueue("s1");
-    assert.deepEqual(waitingList.map((e) => e.userId), ["user-2", "user-3"]);
+    assert.deepEqual(
+      waitingList.map((e) => e.userId),
+      ["user-2", "user-3"],
+    );
     assert.equal(waitingList[0]?.position, 1);
     assert.equal(waitingList[0]?.status, "almost_ready");
     assert.equal(waitingList[1]?.estimatedWaitMinutes, 30);
@@ -228,7 +240,10 @@ describe("reading entries", () => {
     await queue.join("user-1", joinInput());
     await queue.serveNext("s1");
 
-    const cancelled = await queue.join("user-1", joinInput({ serviceId: "s2" }));
+    const cancelled = await queue.join(
+      "user-1",
+      joinInput({ serviceId: "s2" }),
+    );
     await queue.leave(cancelled.id, "user-1");
 
     const history = queue.getHistoryForUser("user-1");
@@ -254,11 +269,13 @@ describe("reading entries", () => {
   it("lets the owner read an entry but not other users", async () => {
     const entry = await queue.join("user-1", joinInput());
     assert.equal(queue.getEntry(entry.id, "user-1").id, entry.id);
-    assert.throws(() => queue.getEntry(entry.id, "user-2"), (error: unknown) =>
-      statusIs(error, 403),
+    assert.throws(
+      () => queue.getEntry(entry.id, "user-2"),
+      (error: unknown) => statusIs(error, 403),
     );
-    assert.throws(() => queue.getEntry("missing", "user-1"), (error: unknown) =>
-      statusIs(error, 404),
+    assert.throws(
+      () => queue.getEntry("missing", "user-1"),
+      (error: unknown) => statusIs(error, 404),
     );
   });
 });
@@ -351,16 +368,28 @@ describe("queue ordering", () => {
   it("orders by arrival when priorities are equal", () => {
     const early = record({ id: "early", joinedAt: "2026-10-22T09:00:00.000Z" });
     const late = record({ id: "late", joinedAt: "2026-10-22T09:05:00.000Z" });
-    assert.deepEqual([late, early].sort(compareEntries).map((e) => e.id), [
-      "early",
-      "late",
-    ]);
+    assert.deepEqual(
+      [late, early].sort(compareEntries).map((e) => e.id),
+      ["early", "late"],
+    );
   });
 
   it("puts higher priority first even if it arrived later", () => {
-    const lowEarly = record({ id: "low", priority: "low", joinedAt: "2026-10-22T09:00:00.000Z" });
-    const medium = record({ id: "med", priority: "medium", joinedAt: "2026-10-22T09:10:00.000Z" });
-    const highLate = record({ id: "high", priority: "high", joinedAt: "2026-10-22T09:30:00.000Z" });
+    const lowEarly = record({
+      id: "low",
+      priority: "low",
+      joinedAt: "2026-10-22T09:00:00.000Z",
+    });
+    const medium = record({
+      id: "med",
+      priority: "medium",
+      joinedAt: "2026-10-22T09:10:00.000Z",
+    });
+    const highLate = record({
+      id: "high",
+      priority: "high",
+      joinedAt: "2026-10-22T09:30:00.000Z",
+    });
     assert.deepEqual(
       [lowEarly, medium, highLate].sort(compareEntries).map((e) => e.id),
       ["high", "med", "low"],
@@ -371,7 +400,10 @@ describe("queue ordering", () => {
     it("lists active entries in order with masked names and no private fields", async () => {
       await queue.join(
         "user-1",
-        joinInput({ customerName: "Alex Johnson", customerEmail: "alex@example.com" }),
+        joinInput({
+          customerName: "Alex Johnson",
+          customerEmail: "alex@example.com",
+        }),
       );
       await queue.join("user-2", joinInput({ customerName: "Maria Garcia" }));
 

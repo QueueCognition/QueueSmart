@@ -16,7 +16,9 @@ import {
 } from "../../src/db/migrations/001-init";
 
 function version(db: DatabaseSync): number {
-  const row = db.prepare("PRAGMA user_version").get() as { user_version: number };
+  const row = db.prepare("PRAGMA user_version").get() as {
+    user_version: number;
+  };
   return Number(row.user_version);
 }
 
@@ -104,8 +106,9 @@ describe("migration runner", () => {
 
       assert.equal(version(db), applied);
       assert.equal(
-        db.prepare("SELECT 1 FROM sqlite_master WHERE name = 'half_applied'").all()
-          .length,
+        db
+          .prepare("SELECT 1 FROM sqlite_master WHERE name = 'half_applied'")
+          .all().length,
         0,
       );
     } finally {
@@ -165,15 +168,12 @@ describe("init migration", () => {
     try {
       runMigrations(db, migrations);
 
-      assert.deepEqual(
-        indexNames(db),
-        [
-          "appointments_user_date_idx",
-          "notifications_user_timestamp_idx",
-          "queue_entries_service_status_idx",
-          "queues_one_open_per_service_idx",
-        ],
-      );
+      assert.deepEqual(indexNames(db), [
+        "appointments_user_date_idx",
+        "notifications_user_timestamp_idx",
+        "queue_entries_service_status_idx",
+        "queues_one_open_per_service_idx",
+      ]);
     } finally {
       db.close();
     }
@@ -185,7 +185,9 @@ describe("init migration", () => {
       runMigrations(db, migrations);
       runMigrations(db, migrations);
 
-      const rows = db.prepare("SELECT id, value FROM queue_ticket_sequence").all();
+      const rows = db
+        .prepare("SELECT id, value FROM queue_ticket_sequence")
+        .all();
       assert.equal(rows.length, 1);
       assert.equal(Number((rows[0] as { value: number }).value), 100);
       assert.ok(matchesDdl(db, "queue_ticket_sequence", QUEUE_TICKET_SEQUENCE));
@@ -201,7 +203,11 @@ describe("init migration", () => {
       db.exec(`INSERT INTO users (id, first_name, last_name, email, role, password_hash, created_at)
                VALUES ('u1','A','B','Mixed@Example.com','user','hash','2026-01-01')`);
 
-      assert.ok(db.prepare("SELECT id FROM users WHERE email = ?").get("mixed@example.com"));
+      assert.ok(
+        db
+          .prepare("SELECT id FROM users WHERE email = ?")
+          .get("mixed@example.com"),
+      );
       assert.throws(
         () =>
           db

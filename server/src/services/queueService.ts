@@ -126,9 +126,11 @@ export class QueueService {
     entries: readonly QueueEntryRecord[],
     service: Service,
   ): QueueSummaryRecord {
-    const waitingList = this.activeEntriesFrom(entries, service.id).map((e) => ({
-      ...e,
-    }));
+    const waitingList = this.activeEntriesFrom(entries, service.id).map(
+      (e) => ({
+        ...e,
+      }),
+    );
     const lastEntry = waitingList[waitingList.length - 1];
     return {
       service: { ...service },
@@ -180,7 +182,7 @@ export class QueueService {
     createNotification(
       userId,
       `You joined the queue for ${service.name}.`,
-      "queue_update"
+      "queue_update",
     );
 
     return { ...this.findEntry(entry.id) };
@@ -299,7 +301,7 @@ export class QueueService {
     closeQueueIfEmpty(service.id);
 
     const [nextUp] = this.activeEntries(serviceId);
-    
+
     if (nextUp) {
       createNotification(
         nextUp.userId,
@@ -307,7 +309,7 @@ export class QueueService {
         "queue_update",
       );
     }
-    
+
     return { served: { ...next }, nextUp: nextUp ? { ...nextUp } : null };
   }
 }

@@ -38,7 +38,9 @@ describe("validateJoinQueueInput", () => {
   });
 
   it("trims surrounding whitespace", () => {
-    const result = validateJoinQueueInput(validBody({ fullName: "  Jamie Win  " }));
+    const result = validateJoinQueueInput(
+      validBody({ fullName: "  Jamie Win  " }),
+    );
     assert.equal(result.customerName, "Jamie Win");
   });
 
@@ -59,15 +61,24 @@ describe("validateJoinQueueInput", () => {
   });
 
   it("rejects names over 100 characters", () => {
-    assert.notEqual(fieldErrorsFor(validBody({ fullName: "a".repeat(101) }))?.fullName, undefined);
+    assert.notEqual(
+      fieldErrorsFor(validBody({ fullName: "a".repeat(101) }))?.fullName,
+      undefined,
+    );
   });
 
   it("rejects impossible dates like Feb 30", () => {
-    assert.notEqual(fieldErrorsFor(validBody({ date: "2099-02-30" }))?.date, undefined);
+    assert.notEqual(
+      fieldErrorsFor(validBody({ date: "2099-02-30" }))?.date,
+      undefined,
+    );
   });
 
   it("rejects dates in the past", () => {
-    assert.notEqual(fieldErrorsFor(validBody({ date: "2020-01-01" }))?.date, undefined);
+    assert.notEqual(
+      fieldErrorsFor(validBody({ date: "2020-01-01" }))?.date,
+      undefined,
+    );
   });
 
   it("rejects bodies that are not objects", () => {
@@ -100,10 +111,16 @@ describe("validateJoinQueueInput", () => {
 
   it("rejects emails over 254 characters", () => {
     const tooLong = `${"a".repeat(250)}@x.com`;
-    assert.notEqual(fieldErrorsFor(validBody({ email: tooLong }))?.email, undefined);
+    assert.notEqual(
+      fieldErrorsFor(validBody({ email: tooLong }))?.email,
+      undefined,
+    );
   });
 
   it("rejects over-long service ids", () => {
-    assert.notEqual(fieldErrorsFor(validBody({ serviceId: "s".repeat(65) }))?.serviceId, undefined);
+    assert.notEqual(
+      fieldErrorsFor(validBody({ serviceId: "s".repeat(65) }))?.serviceId,
+      undefined,
+    );
   });
 });

@@ -63,7 +63,9 @@ function joinBody(overrides: Record<string, unknown> = {}) {
 }
 
 function buildApp() {
-  const queueService = new QueueService(createQueueCatalog(new ServiceService()));
+  const queueService = new QueueService(
+    createQueueCatalog(new ServiceService()),
+  );
   const app = express();
   app.use(express.json());
   app.use("/api/queue", createQueueRoutes(queueService));
@@ -195,7 +197,10 @@ describe("POST /api/queue/join", () => {
   });
 
   it("returns 409 when the user joins the same service twice", async () => {
-    await request(app).post("/api/queue/join").set(actingAs("user-a")).send(joinBody());
+    await request(app)
+      .post("/api/queue/join")
+      .set(actingAs("user-a"))
+      .send(joinBody());
     const res = await request(app)
       .post("/api/queue/join")
       .set(actingAs("user-a"))
@@ -211,7 +216,10 @@ describe("GET /api/queue/wait-time/:serviceId", () => {
     assert.equal(empty.body.waitingCount, 0);
     assert.equal(empty.body.estimatedWaitMinutes, 15);
 
-    await request(app).post("/api/queue/join").set(actingAs("user-a")).send(joinBody());
+    await request(app)
+      .post("/api/queue/join")
+      .set(actingAs("user-a"))
+      .send(joinBody());
     const busy = await request(app).get("/api/queue/wait-time/1");
     assert.equal(busy.body.waitingCount, 1);
     assert.equal(busy.body.estimatedWaitMinutes, 30);
@@ -225,10 +233,18 @@ describe("GET /api/queue/wait-time/:serviceId", () => {
 
 describe("reading and leaving entries", () => {
   it("lists only the caller's own entries at /mine", async () => {
-    await request(app).post("/api/queue/join").set(actingAs("user-a")).send(joinBody());
-    await request(app).post("/api/queue/join").set(actingAs("user-b")).send(joinBody());
+    await request(app)
+      .post("/api/queue/join")
+      .set(actingAs("user-a"))
+      .send(joinBody());
+    await request(app)
+      .post("/api/queue/join")
+      .set(actingAs("user-b"))
+      .send(joinBody());
 
-    const res = await request(app).get("/api/queue/mine").set(actingAs("user-a"));
+    const res = await request(app)
+      .get("/api/queue/mine")
+      .set(actingAs("user-a"));
     assert.equal(res.status, 200);
     assert.equal(res.body.length, 1);
     assert.equal(res.body[0].userId, "user-a");
@@ -276,9 +292,21 @@ describe("reading and leaving entries", () => {
       .send(joinBody());
     const id = joined.body.id as string;
 
-    assert.equal((await request(app).get(`/api/queue/${id}`).set(actingAs("user-a"))).status, 200);
-    assert.equal((await request(app).get(`/api/queue/${id}`).set(actingAs("user-b"))).status, 403);
-    assert.equal((await request(app).get("/api/queue/missing").set(actingAs("user-a"))).status, 404);
+    assert.equal(
+      (await request(app).get(`/api/queue/${id}`).set(actingAs("user-a")))
+        .status,
+      200,
+    );
+    assert.equal(
+      (await request(app).get(`/api/queue/${id}`).set(actingAs("user-b")))
+        .status,
+      403,
+    );
+    assert.equal(
+      (await request(app).get("/api/queue/missing").set(actingAs("user-a")))
+        .status,
+      404,
+    );
   });
 
   it("lets the owner leave, and blocks everyone else", async () => {
@@ -288,14 +316,20 @@ describe("reading and leaving entries", () => {
       .send(joinBody());
     const id = joined.body.id as string;
 
-    const intruder = await request(app).delete(`/api/queue/${id}`).set(actingAs("user-b"));
+    const intruder = await request(app)
+      .delete(`/api/queue/${id}`)
+      .set(actingAs("user-b"));
     assert.equal(intruder.status, 403);
 
-    const owner = await request(app).delete(`/api/queue/${id}`).set(actingAs("user-a"));
+    const owner = await request(app)
+      .delete(`/api/queue/${id}`)
+      .set(actingAs("user-a"));
     assert.equal(owner.status, 200);
     assert.equal(owner.body.status, "cancelled");
 
-    const again = await request(app).delete(`/api/queue/${id}`).set(actingAs("user-a"));
+    const again = await request(app)
+      .delete(`/api/queue/${id}`)
+      .set(actingAs("user-a"));
     assert.equal(again.status, 409);
   });
 });
@@ -324,7 +358,11 @@ describe("admin routes", () => {
   it("returns 401 when not logged in and 403 for regular users", async () => {
     assert.equal((await request(app).get("/api/admin/queues")).status, 401);
     assert.equal(
-      (await request(app).get("/api/admin/queues").set(actingAs("user-a", "user"))).status,
+      (
+        await request(app)
+          .get("/api/admin/queues")
+          .set(actingAs("user-a", "user"))
+      ).status,
       403,
     );
   });
@@ -343,8 +381,14 @@ describe("admin routes", () => {
   });
 
   it("shows one service's queue in serving order", async () => {
-    await request(app).post("/api/queue/join").set(actingAs("user-a")).send(joinBody());
-    await request(app).post("/api/queue/join").set(actingAs("user-b")).send(joinBody());
+    await request(app)
+      .post("/api/queue/join")
+      .set(actingAs("user-a"))
+      .send(joinBody());
+    await request(app)
+      .post("/api/queue/join")
+      .set(actingAs("user-b"))
+      .send(joinBody());
 
     const res = await request(app)
       .get("/api/admin/queues/1")
@@ -358,8 +402,14 @@ describe("admin routes", () => {
   });
 
   it("serves the next user and promotes the one behind", async () => {
-    await request(app).post("/api/queue/join").set(actingAs("user-a")).send(joinBody());
-    await request(app).post("/api/queue/join").set(actingAs("user-b")).send(joinBody());
+    await request(app)
+      .post("/api/queue/join")
+      .set(actingAs("user-a"))
+      .send(joinBody());
+    await request(app)
+      .post("/api/queue/join")
+      .set(actingAs("user-b"))
+      .send(joinBody());
 
     const res = await request(app)
       .post("/api/admin/queues/1/serve-next")
@@ -372,7 +422,15 @@ describe("admin routes", () => {
 
   it("returns 409 for an empty queue and 404 for an unknown service", async () => {
     const staff = actingAs("staff-1", "staff");
-    assert.equal((await request(app).post("/api/admin/queues/1/serve-next").set(staff)).status, 409);
-    assert.equal((await request(app).post("/api/admin/queues/99/serve-next").set(staff)).status, 404);
+    assert.equal(
+      (await request(app).post("/api/admin/queues/1/serve-next").set(staff))
+        .status,
+      409,
+    );
+    assert.equal(
+      (await request(app).post("/api/admin/queues/99/serve-next").set(staff))
+        .status,
+      404,
+    );
   });
 });

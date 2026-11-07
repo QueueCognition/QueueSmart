@@ -1,18 +1,17 @@
-
 import { randomUUID } from "node:crypto";
 import {
   insertNotification,
   listNotificationsForUser,
   markNotificationRead as markStoredNotificationRead,
   markAllNotificationsRead as markAllStoredNotificationsRead,
-  type StoredNotification
+  type StoredNotification,
 } from "../models/notificationStore";
 import type { Notification, NotificationType } from "../types/queue";
 
 export function createNotification(
   userId: string,
   message: string,
-  type: NotificationType = "queue_update"
+  type: NotificationType = "queue_update",
 ): Notification {
   const notification: StoredNotification = {
     id: randomUUID(),
@@ -34,14 +33,11 @@ export function createNotification(
   };
 }
 
-export function getNotificationsForUser(
-  userId: string
-): Notification[] {
+export function getNotificationsForUser(userId: string): Notification[] {
   return listNotificationsForUser(userId)
     .sort(
       (a, b) =>
-        new Date(b.timestamp).getTime() -
-        new Date(a.timestamp).getTime()
+        new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
     )
     .map(({ id, message, type, timestamp, read }) => ({
       id,
@@ -54,12 +50,9 @@ export function getNotificationsForUser(
 
 export function markNotificationAsRead(
   userId: string,
-  notificationId: string
+  notificationId: string,
 ): Notification | undefined {
-  const notification = markStoredNotificationRead(
-    userId,
-    notificationId
-  );
+  const notification = markStoredNotificationRead(userId, notificationId);
 
   if (!notification) {
     return undefined;
@@ -69,9 +62,6 @@ export function markNotificationAsRead(
   return { id, message, type, timestamp, read };
 }
 
-export function markAllNotificationsAsRead(
-  userId: string
-): void {
+export function markAllNotificationsAsRead(userId: string): void {
   markAllStoredNotificationsRead(userId);
 }
-

@@ -66,7 +66,9 @@ function JoinQueue() {
       .catch((error: unknown) => {
         if (active) {
           setFormError(
-            error instanceof Error ? error.message : "Failed to load your queue.",
+            error instanceof Error
+              ? error.message
+              : "Failed to load your queue.",
           );
         }
       });
@@ -290,8 +292,7 @@ function JoinQueue() {
 
           {formError && (
             <p className="field-error" role="alert">
-              {formError}{" "}
-              {!isAuthenticated && <Link to="/login">Sign in</Link>}
+              {formError} {!isAuthenticated && <Link to="/login">Sign in</Link>}
             </p>
           )}
 
@@ -315,8 +316,9 @@ function JoinQueue() {
                 <li key={entry.id} className="my-queue-item">
                   <div className="my-queue-info">
                     <span className="my-queue-service">
-                      {services.find((service) => service.id === entry.serviceId)
-                        ?.name ?? entry.serviceId}
+                      {services.find(
+                        (service) => service.id === entry.serviceId,
+                      )?.name ?? entry.serviceId}
                     </span>
                     <span className="my-queue-meta">
                       {entry.date} at {entry.timeSlot}

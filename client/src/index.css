@@ -138,19 +138,18 @@ body {
   border-radius: 6px;
 }
 
-
 .app-navbar {
-  position: relative; 
+  position: relative;
 }
 
 .app-navbar .navbar {
-  padding-right: 4.5rem; 
+  padding-right: 4.5rem;
 }
 
 .notif-slot {
   position: absolute;
   top: 0;
-  right: 2rem; 
+  right: 2rem;
   height: 100%;
   display: flex;
   align-items: center;
@@ -160,12 +159,12 @@ body {
   position: relative;
   display: inline-flex;
   align-items: center;
-  padding-bottom: 0.5rem; 
+  padding-bottom: 0.5rem;
   margin-bottom: -0.5rem;
 }
 
 .notif-bell {
-  position: relative; 
+  position: relative;
 }
 
 .notif-badge {
@@ -187,9 +186,9 @@ body {
 .notif-menu {
   position: absolute;
   top: 100%;
-  right: 0; 
-  width: 340px; 
-  max-height: 400px; 
+  right: 0;
+  width: 340px;
+  max-height: 400px;
   overflow-y: auto;
   background: var(--bg-card);
   color: var(--text-primary);
@@ -240,7 +239,7 @@ body {
 }
 
 .notif-item--read {
-  background: #eef1f7; 
+  background: #eef1f7;
   color: var(--text-muted);
 }
 
@@ -259,7 +258,7 @@ body {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: #e53935; 
+  background: #e53935;
 }
 
 .notif-content {

@@ -91,7 +91,10 @@ describe("verifyToken", () => {
   });
 
   it("rejects an expired token", () => {
-    assert.throws(() => verifyToken(issued(-60).token, SECRET), /Token expired/);
+    assert.throws(
+      () => verifyToken(issued(-60).token, SECRET),
+      /Token expired/,
+    );
   });
 
   it("rejects malformed tokens", () => {

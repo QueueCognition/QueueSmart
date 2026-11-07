@@ -1,225 +1,213 @@
-import { useEffect, useState } from 'react'
-import type { FormEvent } from 'react'
+import { useEffect, useState } from "react";
+import type { FormEvent } from "react";
 import {
   getServices,
   createService,
   updateService,
   deleteService,
   setServiceAvailability,
-} from '../services/serviceApi'
-import type { Service, Priority } from '../services/serviceApi'
-import '../styles/servicemanagement.css'
+} from "../services/serviceApi";
+import type { Service, Priority } from "../services/serviceApi";
+import "../styles/servicemanagement.css";
 
 function ServiceManagement() {
-  const [services, setServices] = useState<Service[]>([])
-  const [loading, setLoading] = useState(true)
-  const [apiError, setApiError] = useState('')
-  const [saving, setSaving] = useState(false)
-  const [editingId, setEditingId] = useState<number | null>(null)
+  const [services, setServices] = useState<Service[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [apiError, setApiError] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [editingId, setEditingId] = useState<number | null>(null);
 
-  const [name, setName] = useState('')
-  const [description, setDescription] = useState('')
-  const [duration, setDuration] = useState('')
-  const [priority, setPriority] = useState<Priority>('medium')
-  const [errors, setErrors] = useState<Record<string, string>>({})
+  const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
+  const [duration, setDuration] = useState("");
+  const [priority, setPriority] = useState<Priority>("medium");
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
-    let cancelled = false
+    let cancelled = false;
 
     getServices()
       .then((data) => {
         if (!cancelled) {
-          setServices(data)
-          setApiError('')
+          setServices(data);
+          setApiError("");
         }
       })
       .catch((error: unknown) => {
         if (!cancelled) {
           setApiError(
-            error instanceof Error
-              ? error.message
-              : 'Failed to load services.',
-          )
+            error instanceof Error ? error.message : "Failed to load services.",
+          );
         }
       })
       .finally(() => {
         if (!cancelled) {
-          setLoading(false)
+          setLoading(false);
         }
-      })
+      });
 
     return () => {
-      cancelled = true
-    }
-  }, [])
+      cancelled = true;
+    };
+  }, []);
 
   const resetForm = () => {
-    setName('')
-    setDescription('')
-    setDuration('')
-    setPriority('medium')
-    setEditingId(null)
-    setErrors({})
-  }
+    setName("");
+    setDescription("");
+    setDuration("");
+    setPriority("medium");
+    setEditingId(null);
+    setErrors({});
+  };
 
   const validate = () => {
-    const newErrors: Record<string, string> = {}
-    const parsedDuration = Number(duration)
+    const newErrors: Record<string, string> = {};
+    const parsedDuration = Number(duration);
 
     if (!name.trim()) {
-      newErrors.name = 'Service name is required.'
+      newErrors.name = "Service name is required.";
     } else if (name.trim().length > 100) {
-      newErrors.name = 'Service name must be 100 characters or less.'
+      newErrors.name = "Service name must be 100 characters or less.";
     }
 
     if (!description.trim()) {
-      newErrors.description = 'Description is required.'
+      newErrors.description = "Description is required.";
     }
 
     if (!duration.trim()) {
-      newErrors.duration = 'Expected duration is required.'
-    } else if (
-      !Number.isSafeInteger(parsedDuration) ||
-      parsedDuration <= 0
-    ) {
-      newErrors.duration = 'Duration must be a positive whole number.'
+      newErrors.duration = "Expected duration is required.";
+    } else if (!Number.isSafeInteger(parsedDuration) || parsedDuration <= 0) {
+      newErrors.duration = "Duration must be a positive whole number.";
     }
 
-    setErrors(newErrors)
-    return Object.keys(newErrors).length === 0
-  }
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault()
+    event.preventDefault();
 
     if (!validate() || saving) {
-      return
+      return;
     }
 
-    setSaving(true)
-    setApiError('')
+    setSaving(true);
+    setApiError("");
 
     const serviceData = {
       name: name.trim(),
       description: description.trim(),
       duration: Number(duration),
       priority,
-    }
+    };
 
     try {
       if (editingId !== null) {
-        const updatedService = await updateService(editingId, serviceData)
+        const updatedService = await updateService(editingId, serviceData);
 
         setServices((currentServices) =>
           currentServices.map((service) =>
             service.id === editingId ? updatedService : service,
           ),
-        )
+        );
       } else {
-        const newService = await createService(serviceData)
+        const newService = await createService(serviceData);
 
-        setServices((currentServices) => [
-          ...currentServices,
-          newService,
-        ])
+        setServices((currentServices) => [...currentServices, newService]);
       }
 
-      resetForm()
+      resetForm();
     } catch (error: unknown) {
       setApiError(
-        error instanceof Error
-          ? error.message
-          : 'Failed to save the service.',
-      )
+        error instanceof Error ? error.message : "Failed to save the service.",
+      );
     } finally {
-      setSaving(false)
+      setSaving(false);
     }
-  }
+  };
 
   const handleEdit = (service: Service) => {
-    setEditingId(service.id)
-    setName(service.name)
-    setDescription(service.description)
-    setDuration(String(service.duration))
-    setPriority(service.priority)
-    setErrors({})
-    setApiError('')
-  }
+    setEditingId(service.id);
+    setName(service.name);
+    setDescription(service.description);
+    setDuration(String(service.duration));
+    setPriority(service.priority);
+    setErrors({});
+    setApiError("");
+  };
 
   const handleToggleAvailability = async (service: Service) => {
     if (saving) {
-      return
+      return;
     }
 
-    setSaving(true)
-    setApiError('')
+    setSaving(true);
+    setApiError("");
 
     try {
       const updated = await setServiceAvailability(
         service.id,
         !service.isAvailable,
-      )
+      );
 
       setServices((currentServices) =>
         currentServices.map((item) =>
           item.id === updated.id ? updated : item,
         ),
-      )
+      );
     } catch (error: unknown) {
       setApiError(
         error instanceof Error
           ? error.message
-          : 'Failed to update the service availability.',
-      )
+          : "Failed to update the service availability.",
+      );
     } finally {
-      setSaving(false)
+      setSaving(false);
     }
-  }
+  };
 
   const handleRemove = async (id: number) => {
     if (saving) {
-      return
+      return;
     }
 
     const confirmed = window.confirm(
-      'Are you sure you want to remove this service?',
-    )
+      "Are you sure you want to remove this service?",
+    );
 
     if (!confirmed) {
-      return
+      return;
     }
 
-    setSaving(true)
-    setApiError('')
+    setSaving(true);
+    setApiError("");
 
     try {
-      await deleteService(id)
+      await deleteService(id);
 
       setServices((currentServices) =>
         currentServices.filter((service) => service.id !== id),
-      )
+      );
 
       if (editingId === id) {
-        resetForm()
+        resetForm();
       }
     } catch (error: unknown) {
       setApiError(
         error instanceof Error
           ? error.message
-          : 'Failed to remove the service.',
-      )
+          : "Failed to remove the service.",
+      );
     } finally {
-      setSaving(false)
+      setSaving(false);
     }
-  }
+  };
 
   return (
     <main className="service-management">
       <div className="service-management__header">
         <h1>Service Management</h1>
-        <p>
-          Create and manage the services available through QueueSmart.
-        </p>
+        <p>Create and manage the services available through QueueSmart.</p>
       </div>
 
       {apiError && (
@@ -229,9 +217,7 @@ function ServiceManagement() {
       )}
 
       <section className="service-card">
-        <h2>
-          {editingId !== null ? 'Edit Service' : 'Create New Service'}
-        </h2>
+        <h2>{editingId !== null ? "Edit Service" : "Create New Service"}</h2>
 
         <form onSubmit={handleSubmit} className="service-form">
           <div className="service-field">
@@ -245,8 +231,8 @@ function ServiceManagement() {
               placeholder="Enter service name"
               className={
                 errors.name
-                  ? 'service-input service-input--error'
-                  : 'service-input'
+                  ? "service-input service-input--error"
+                  : "service-input"
               }
             />
             {errors.name && (
@@ -264,14 +250,12 @@ function ServiceManagement() {
               rows={4}
               className={
                 errors.description
-                  ? 'service-input service-input--error'
-                  : 'service-input'
+                  ? "service-input service-input--error"
+                  : "service-input"
               }
             />
             {errors.description && (
-              <span className="service-error">
-                {errors.description}
-              </span>
+              <span className="service-error">{errors.description}</span>
             )}
           </div>
 
@@ -290,14 +274,12 @@ function ServiceManagement() {
                 placeholder="e.g. 30"
                 className={
                   errors.duration
-                    ? 'service-input service-input--error'
-                    : 'service-input'
+                    ? "service-input service-input--error"
+                    : "service-input"
                 }
               />
               {errors.duration && (
-                <span className="service-error">
-                  {errors.duration}
-                </span>
+                <span className="service-error">{errors.duration}</span>
               )}
             </div>
 
@@ -325,10 +307,10 @@ function ServiceManagement() {
               disabled={saving || loading}
             >
               {saving
-                ? 'Saving...'
+                ? "Saving..."
                 : editingId !== null
-                  ? 'Save Changes'
-                  : 'Create Service'}
+                  ? "Save Changes"
+                  : "Create Service"}
             </button>
 
             {editingId !== null && (
@@ -396,7 +378,7 @@ function ServiceManagement() {
                   onClick={() => handleToggleAvailability(service)}
                   disabled={saving}
                 >
-                  {service.isAvailable ? 'Pause' : 'Resume'}
+                  {service.isAvailable ? "Pause" : "Resume"}
                 </button>
 
                 <button
@@ -405,7 +387,7 @@ function ServiceManagement() {
                   onClick={() => handleRemove(service.id)}
                   disabled={saving}
                 >
-                  {saving ? 'Please wait...' : 'Remove'}
+                  {saving ? "Please wait..." : "Remove"}
                 </button>
               </div>
             </article>
@@ -413,7 +395,7 @@ function ServiceManagement() {
         )}
       </section>
     </main>
-  )
+  );
 }
 
-export default ServiceManagement
+export default ServiceManagement;

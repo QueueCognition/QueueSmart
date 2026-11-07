@@ -232,7 +232,12 @@ describe("POST /auth/logout", () => {
 describe("GET /auth/profile", () => {
   it("returns the profile for a valid token", async () => {
     const token = await loginAs(PROFILE_EMAIL, PASSWORD);
-    const { status, body } = await send("GET", "/auth/profile", undefined, token);
+    const { status, body } = await send(
+      "GET",
+      "/auth/profile",
+      undefined,
+      token,
+    );
 
     assert.equal(status, 200);
     assert.equal(body?.id, "u_route_profile");

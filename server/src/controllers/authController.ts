@@ -72,10 +72,7 @@ export const updateProfileHandler: RequestHandler = async (req, res) => {
 };
 
 export const changePasswordHandler: RequestHandler = async (req, res) => {
-  await changePassword(
-    currentUser(res).id,
-    validatePasswordChange(req.body),
-  );
+  await changePassword(currentUser(res).id, validatePasswordChange(req.body));
 
   res.status(204).end();
 };

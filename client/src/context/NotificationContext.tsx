@@ -8,7 +8,11 @@ import {
 } from "react";
 import type { Notification } from "../types/queue";
 import { useAuth } from "./AuthContext";
-import { getNotifications , markNotificationAsRead, markAllNotificationsAsRead } from "../services/notificationService";
+import {
+  getNotifications,
+  markNotificationAsRead,
+  markAllNotificationsAsRead,
+} from "../services/notificationService";
 
 interface NotificationContextValue {
   notifications: Notification[];
@@ -17,15 +21,11 @@ interface NotificationContextValue {
   markAllRead: () => void;
 }
 
-const NotificationContext = createContext<
-  NotificationContextValue | undefined
->(undefined);
+const NotificationContext = createContext<NotificationContextValue | undefined>(
+  undefined,
+);
 
-export function NotificationProvider({
-  children,
-}: {
-  children: ReactNode;
-}) {
+export function NotificationProvider({ children }: { children: ReactNode }) {
   const { isAuthenticated, isInitializing } = useAuth();
 
   const [notifications, setNotifications] = useState<Notification[]>([]);
@@ -69,7 +69,6 @@ export function NotificationProvider({
     };
   }, [isAuthenticated, isInitializing]);
 
-
   const push = useCallback(
     (n: Omit<Notification, "id" | "timestamp" | "read">) => {
       const newNotification: Notification = {
@@ -88,9 +87,7 @@ export function NotificationProvider({
     try {
       const updated = await markNotificationAsRead(id);
 
-      setNotifications((prev) =>
-        prev.map((n) => (n.id === id ? updated : n))
-      );
+      setNotifications((prev) => prev.map((n) => (n.id === id ? updated : n)));
     } catch (error: unknown) {
       console.error("Failed to mark notification as read:", error);
     }
@@ -100,9 +97,7 @@ export function NotificationProvider({
     try {
       await markAllNotificationsAsRead();
 
-      setNotifications((prev) =>
-        prev.map((n) => ({ ...n, read: true }))
-      );
+      setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
     } catch (error: unknown) {
       console.error("Failed to mark all notifications as read:", error);
     }

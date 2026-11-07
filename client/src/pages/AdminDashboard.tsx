@@ -107,8 +107,7 @@ function AdminDashboard() {
             onClick={refresh}
             title="Refresh dashboard data"
           >
-            Refresh (
-            {lastRefreshed ? lastRefreshed.toLocaleTimeString() : "—"})
+            Refresh ({lastRefreshed ? lastRefreshed.toLocaleTimeString() : "—"})
           </button>
         </div>
       </header>
@@ -328,7 +327,9 @@ function AdminDashboard() {
 
                       <div className="admin-waitlist-stats">
                         <span className="admin-service-est-time">
-                          {isSearching ? "Full queue wait: " : "Total queue wait: "}
+                          {isSearching
+                            ? "Full queue wait: "
+                            : "Total queue wait: "}
                           <strong>{estimatedWaitMinutes} min</strong>
                         </span>
                         <Link
@@ -374,13 +375,15 @@ function AdminDashboard() {
                                 </td>
                                 <td>
                                   <span className="admin-ticket-tag">
-                                    {entry.ticketNumber || `T-${entry.position}`}
+                                    {entry.ticketNumber ||
+                                      `T-${entry.position}`}
                                   </span>
                                 </td>
                                 <td>
                                   <div className="admin-customer-cell">
                                     <span className="admin-customer-name">
-                                      {entry.customerName || "Anonymous Customer"}
+                                      {entry.customerName ||
+                                        "Anonymous Customer"}
                                     </span>
                                     {entry.customerEmail && (
                                       <span className="admin-customer-email">
@@ -389,7 +392,9 @@ function AdminDashboard() {
                                     )}
                                   </div>
                                 </td>
-                                <td>{entry.timeSlot || "Walk-in / Immediate"}</td>
+                                <td>
+                                  {entry.timeSlot || "Walk-in / Immediate"}
+                                </td>
                                 <td>
                                   {new Date(entry.joinedAt).toLocaleTimeString(
                                     [],
@@ -418,9 +423,7 @@ function AdminDashboard() {
                                     onClick={() =>
                                       handleServeNext(service.id, service.name)
                                     }
-                                    disabled={
-                                      entry.position !== 1 || isServing
-                                    }
+                                    disabled={entry.position !== 1 || isServing}
                                     title={
                                       entry.position === 1
                                         ? "Serve the next person in this queue"
@@ -439,7 +442,8 @@ function AdminDashboard() {
 
                     {waitingCount !== waitingList.length && (
                       <p className="admin-waitlist-note">
-                        Showing {waitingList.length} of {waitingCount} customers.
+                        Showing {waitingList.length} of {waitingCount}{" "}
+                        customers.
                       </p>
                     )}
                   </div>

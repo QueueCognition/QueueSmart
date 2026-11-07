@@ -9,9 +9,10 @@ import { getStoredAccessToken } from "./authService";
 import { AuthError } from "./authError";
 import { getServices as getManagedServices } from "./serviceApi";
 
-const API_BASE_URL = (
-  import.meta.env.VITE_API_BASE_URL || "/api"
-).replace(/\/$/, "");
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "/api").replace(
+  /\/$/,
+  "",
+);
 const QUEUE_URL = `${API_BASE_URL}/queue`;
 const ADMIN_QUEUE_URL = `${API_BASE_URL}/admin/queues`;
 
@@ -115,10 +116,7 @@ export function joinQueue(input: JoinQueueInput): Promise<QueueEntry> {
 }
 
 export function getQueueStatus(entryId: string): Promise<QueueEntry> {
-  return request<QueueEntry>(
-    QUEUE_URL,
-    `/${encodeURIComponent(entryId)}`,
-  );
+  return request<QueueEntry>(QUEUE_URL, `/${encodeURIComponent(entryId)}`);
 }
 
 export function getMyQueue(): Promise<QueueEntry[]> {
@@ -130,11 +128,9 @@ export function getQueueHistory(): Promise<QueueEntry[]> {
 }
 
 export function leaveQueue(entryId: string): Promise<QueueEntry> {
-  return request<QueueEntry>(
-    QUEUE_URL,
-    `/${encodeURIComponent(entryId)}`,
-    { method: "DELETE" },
-  );
+  return request<QueueEntry>(QUEUE_URL, `/${encodeURIComponent(entryId)}`, {
+    method: "DELETE",
+  });
 }
 
 export function getWaitEstimate(serviceId: string): Promise<WaitEstimate> {

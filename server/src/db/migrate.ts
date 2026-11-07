@@ -9,7 +9,9 @@ export interface Migration {
 export function tableExists(db: DatabaseSync, table: string): boolean {
   return (
     db
-      .prepare("SELECT 1 AS found FROM sqlite_master WHERE type = 'table' AND name = ?")
+      .prepare(
+        "SELECT 1 AS found FROM sqlite_master WHERE type = 'table' AND name = ?",
+      )
       .get(table) !== undefined
   );
 }
@@ -42,8 +44,7 @@ export function matchesDdl(
 
 function schemaVersion(db: DatabaseSync): number {
   const row = db.prepare("PRAGMA user_version").get() as
-    | { user_version?: number }
-    | undefined;
+    { user_version?: number } | undefined;
 
   return Number(row?.user_version ?? 0);
 }

@@ -30,7 +30,6 @@ function Calendar() {
       });
   }, [user]);
 
-
   const [currentMonth, setCurrentMonth] = useState(() => new Date());
 
   function changeMonth(amount: number) {
@@ -100,9 +99,7 @@ function Calendar() {
       String(date.getDate()).padStart(2, "0"),
     ].join("-");
 
-    return history.filter(
-      (entry) => entry.date === dateString,
-    );
+    return history.filter((entry) => entry.date === dateString);
   }
 
   return (
@@ -215,8 +212,12 @@ function Calendar() {
                           key={entry.id}
                         >
                           <strong>{entry.timeSlot}</strong>
-                          <span>{service?.name ?? `Service ${entry.serviceId}`}</span>
-                          <span>{status.charAt(0).toUpperCase() + status.slice(1)}</span>
+                          <span>
+                            {service?.name ?? `Service ${entry.serviceId}`}
+                          </span>
+                          <span>
+                            {status.charAt(0).toUpperCase() + status.slice(1)}
+                          </span>
                         </div>
                       );
                     })}

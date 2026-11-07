@@ -1,4 +1,3 @@
-
 import assert from "node:assert/strict";
 import { before, beforeEach, describe, it } from "node:test";
 import { DatabaseSync } from "node:sqlite";
@@ -39,7 +38,7 @@ function actingAs(id: string, role: UserRole) {
     null,
     config.jwtSecret,
     config.tokenTtlSeconds,
-    0
+    0,
   );
 
   return { Authorization: `Bearer ${token}` };

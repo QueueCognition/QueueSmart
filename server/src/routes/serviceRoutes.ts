@@ -10,33 +10,18 @@ export function createServiceRoutes(serviceService: ServiceService) {
 
   router.get("/", controller.listServices);
 
-  router.post(
-    "/",
-    requireAuth,
-    requireStaff,
-    controller.createService
-  );
+  router.post("/", requireAuth, requireStaff, controller.createService);
 
-  router.put(
-    "/:id",
-    requireAuth,
-    requireStaff,
-    controller.updateService
-  );
+  router.put("/:id", requireAuth, requireStaff, controller.updateService);
 
   router.patch(
     "/:id/availability",
     requireAuth,
     requireStaff,
-    controller.setServiceAvailability
+    controller.setServiceAvailability,
   );
 
-  router.delete(
-    "/:id",
-    requireAuth,
-    requireStaff,
-    controller.removeService
-  );
+  router.delete("/:id", requireAuth, requireStaff, controller.removeService);
 
   return router;
 }

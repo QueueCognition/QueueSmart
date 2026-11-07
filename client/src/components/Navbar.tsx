@@ -43,10 +43,7 @@ function Navbar() {
 
           {scheduleOpen && (
             <div className="navbar-dropdown-menu">
-              <Link
-                to="/schedule/join-queue"
-                className="navbar-dropdown-item"
-              >
+              <Link to="/schedule/join-queue" className="navbar-dropdown-item">
                 Schedule Appointment
               </Link>
 

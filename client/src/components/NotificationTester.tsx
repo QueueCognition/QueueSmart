@@ -1,18 +1,17 @@
 import { useEffect } from "react";
 import { useNotifications } from "../context/NotificationContext";
 
-
 function NotificationTester() {
   const { push } = useNotifications();
 
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
-      if (!e.ctrlKey || e.repeat) return; 
+      if (!e.ctrlKey || e.repeat) return;
 
       const key = e.key.toLowerCase();
 
       if (key === "q") {
-        e.preventDefault(); 
+        e.preventDefault();
         push({ message: "You're now #2 in line", type: "queue_update" });
       } else if (key === "e") {
         e.preventDefault();
@@ -27,7 +26,7 @@ function NotificationTester() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [push]);
 
-  return null; 
+  return null;
 }
 
 export default NotificationTester;

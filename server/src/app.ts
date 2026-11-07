@@ -9,7 +9,7 @@ import { ServiceService } from "./services/serviceService";
 import { QueueService } from "./services/queueService";
 import { createQueueCatalog } from "./services/queueCatalog";
 import { createServiceRoutes } from "./routes/serviceRoutes";
-import { createNotificationRoutes } from './routes/notificationRoutes'
+import { createNotificationRoutes } from "./routes/notificationRoutes";
 import {
   createAdminQueueRoutes,
   createQueueRoutes,
@@ -53,10 +53,7 @@ export function createApp(options: AppOptions = {}): express.Express {
     `${config.apiPrefix}/admin/queues`,
     createAdminQueueRoutes(queueService),
   );
-  app.use(
-    `${config.apiPrefix}/notifications`,
-    createNotificationRoutes(),
-  );
+  app.use(`${config.apiPrefix}/notifications`, createNotificationRoutes());
   app.use(config.apiPrefix, apiRouter);
 
   app.use(notFound);

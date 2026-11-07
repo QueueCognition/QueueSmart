@@ -7,7 +7,9 @@ import {
 export type AdminQueueEntry = QueueEntry;
 export type AdminServiceQueueSummary = QueueServiceSummary;
 
-export function getAdminServiceWaitSummaries(): Promise<AdminServiceQueueSummary[]> {
+export function getAdminServiceWaitSummaries(): Promise<
+  AdminServiceQueueSummary[]
+> {
   return getBackendQueueSummaries();
 }
 
