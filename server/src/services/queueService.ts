@@ -250,7 +250,7 @@ export class QueueService {
 
   getHistoryForUser(userId: string): QueueEntryRecord[] {
     return listEntries()
-      .filter((entry) => entry.userId === userId)
+      .filter((entry) => entry.userId === userId && !isActive(entry))
       .sort(
         (a, b) =>
           new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
