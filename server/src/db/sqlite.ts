@@ -76,14 +76,12 @@ INSERT OR IGNORE INTO queue_ticket_sequence (id, value) VALUES (1, 100);
 
 CREATE TABLE IF NOT EXISTS notifications (
   id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   message TEXT NOT NULL,
   type TEXT NOT NULL CHECK (type IN ('queue_update', 'status_change')),
   timestamp TEXT NOT NULL,
   is_read INTEGER NOT NULL DEFAULT 0 CHECK (is_read IN (0, 1))
 );
-
-CREATE INDEX IF NOT EXISTS notifications_timestamp_idx
-  ON notifications (timestamp DESC);
 
 CREATE TABLE IF NOT EXISTS appointments (
   id TEXT PRIMARY KEY,
@@ -114,6 +112,12 @@ function openDatabase(): DatabaseSync {
   database.exec(SCHEMA);
   migrateUserTokenVersion(database);
   migrateQueueEntries(database);
+  migrateNotifications(database);
+
+database.exec(`
+  CREATE INDEX IF NOT EXISTS notifications_user_timestamp_idx
+    ON notifications (user_id, timestamp DESC);
+`);
   return database;
 }
 
@@ -266,6 +270,48 @@ function migrateQueueEntries(database: DatabaseSync): void {
       CREATE INDEX queue_entries_service_status_idx
         ON queue_entries (service_id, status, position);
     `);
+    database.exec("COMMIT");
+  } catch (error) {
+    database.exec("ROLLBACK");
+    throw error;
+  }
+}
+
+function migrateNotifications(database: DatabaseSync): void {
+  const columns = tableColumns(database, "notifications");
+
+  // The table already has user_id, so no migration is needed.
+  if (columns.has("user_id")) return;
+
+  // Don't discard notifications if any unexpectedly exist.
+  const result = database
+    .prepare("SELECT COUNT(*) AS count FROM notifications")
+    .get() as { count: number } | undefined;
+
+  if (Number(result?.count ?? 0) > 0) {
+    throw new Error(
+      "Cannot migrate notifications: existing records need user assignments.",
+    );
+  }
+
+  database.exec("BEGIN");
+
+  try {
+    database.exec(`
+      CREATE TABLE notifications_new (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        message TEXT NOT NULL,
+        type TEXT NOT NULL CHECK (type IN ('queue_update', 'status_change')),
+        timestamp TEXT NOT NULL,
+        is_read INTEGER NOT NULL DEFAULT 0 CHECK (is_read IN (0, 1))
+      );
+
+      DROP TABLE notifications;
+
+      ALTER TABLE notifications_new RENAME TO notifications;
+    `);
+
     database.exec("COMMIT");
   } catch (error) {
     database.exec("ROLLBACK");
