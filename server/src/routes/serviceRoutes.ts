@@ -1,15 +1,35 @@
 import { Router } from "express";
 import { ServiceService } from "../services/serviceService";
 import { createServiceController } from "../controllers/serviceController";
+import { requireAuth } from "../middleware/requireAuth";
+import { requireStaff } from "../middleware/requireStaff";
 
 export function createServiceRoutes(serviceService: ServiceService) {
   const router = Router();
   const controller = createServiceController(serviceService);
 
   router.get("/", controller.listServices);
-  router.post("/", controller.createService);
-  router.put("/:id", controller.updateService);
-  router.delete("/:id", controller.removeService);
+
+  router.post(
+    "/",
+    requireAuth,
+    requireStaff,
+    controller.createService
+  );
+
+  router.put(
+    "/:id",
+    requireAuth,
+    requireStaff,
+    controller.updateService
+  );
+
+  router.delete(
+    "/:id",
+    requireAuth,
+    requireStaff,
+    controller.removeService
+  );
 
   return router;
 }

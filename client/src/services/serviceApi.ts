@@ -1,5 +1,4 @@
-
-import { API_BASE_URL } from "./authService";
+import { API_BASE_URL, getStoredAccessToken } from "./authService";
 
 export type Priority = 'low' | 'medium' | 'high'
 
@@ -23,10 +22,13 @@ async function request<T>(
   url: string,
   options?: RequestInit,
 ): Promise<T> {
+  const token = getStoredAccessToken()
+
   const response = await fetch(url, {
     ...options,
     headers: {
       'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...options?.headers,
     },
   })
