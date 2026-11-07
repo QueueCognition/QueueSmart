@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import "../styles/calendar.css";
 import { useAuth } from "../context/AuthContext";
-import { getQueueHistory, getServices } from "../services/queueService";
+import { getMyQueue, getQueueHistory, getServices } from "../services/queueService";
 import type { QueueEntry, Service } from "../types/queue";
 
 function Calendar() {
@@ -9,25 +9,61 @@ function Calendar() {
 
   const [history, setHistory] = useState<QueueEntry[]>([]);
   const [services, setServices] = useState<Service[]>([]);
+  const [myQueue, setMyQueue] = useState<QueueEntry[]>([]);
 
   useEffect(() => {
     if (!user) return;
 
-    getQueueHistory()
-      .then(setHistory)
-      .catch((error) => {
-        console.error("Failed to load queue history:", error);
-      });
+    let active = true;
+
+    async function loadQueueData() {
+      try {
+        const [activeEntries, historyEntries] = await Promise.all([
+          getMyQueue(),
+          getQueueHistory(),
+        ]);
+
+        console.log("Active queue:", activeEntries);
+        console.log("Queue history:", historyEntries);
+
+        if (active) {
+          setMyQueue(activeEntries);
+          setHistory(historyEntries);
+        }
+      } catch (error) {
+        if (active) {
+          console.error("Failed to load queue data:", error);
+        }
+      }
+    }
+
+    void loadQueueData();
+
+    return () => {
+      active = false;
+    };
   }, [user]);
 
   useEffect(() => {
     if (!user) return;
 
+    let active = true;
+
     getServices()
-      .then(setServices)
+      .then((loadedServices) => {
+        if (active) {
+          setServices(loadedServices);
+        }
+      })
       .catch((error) => {
-        console.error("Failed to load services:", error);
+        if (active) {
+          console.error("Failed to load services:", error);
+        }
       });
+
+    return () => {
+      active = false;
+    };
   }, [user]);
 
 
@@ -87,7 +123,7 @@ function Calendar() {
 
   const weekdays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
-  function getHistoryForDay(day: number) {
+  function getEntriesForDay(day: number) {
     const date = new Date(
       currentMonth.getFullYear(),
       currentMonth.getMonth(),
@@ -100,7 +136,7 @@ function Calendar() {
       String(date.getDate()).padStart(2, "0"),
     ].join("-");
 
-    return history.filter(
+    return [...myQueue, ...history].filter(
       (entry) => entry.date === dateString,
     );
   }
@@ -179,7 +215,7 @@ function Calendar() {
         ))}
 
         {calendarDays.map((day, index) => {
-          const dayHistory = day !== null ? getHistoryForDay(day) : [];
+          const dayHistory = day !== null ? getEntriesForDay(day) : [];
 
           return (
             <div
