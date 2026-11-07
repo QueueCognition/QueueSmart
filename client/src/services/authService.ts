@@ -2,6 +2,7 @@ import type {
   AuthSession,
   LoginCredentials,
   PasswordResetResult,
+  ProfileUser,
   RegisterDetails,
   User,
 } from "../types/auth";
@@ -32,7 +33,8 @@ export function getStoredAccessToken(): string | null {
 }
 
 interface ErrorPayload {
-  message?: string;
+  message?: unknown;
+  fieldErrors?: unknown;
 }
 
 function withJsonHeaders(init: RequestInit): RequestInit {
@@ -42,14 +44,32 @@ function withJsonHeaders(init: RequestInit): RequestInit {
   return { ...init, headers };
 }
 
-async function readErrorMessage(response: Response): Promise<string> {
+function readFieldErrors(value: unknown): Record<string, string> {
+  if (typeof value !== "object" || value === null) return {};
+
+  const fieldErrors: Record<string, string> = {};
+  for (const [key, entry] of Object.entries(value)) {
+    if (typeof entry === "string") fieldErrors[key] = entry;
+  }
+
+  return fieldErrors;
+}
+
+async function readErrorPayload(
+  response: Response,
+): Promise<{ message: string; fieldErrors: Record<string, string> }> {
   const fallback = "Something went wrong. Please try again.";
 
   try {
     const payload = (await response.json()) as ErrorPayload;
-    return payload.message?.trim() || fallback;
+    const message =
+      typeof payload.message === "string" && payload.message.trim()
+        ? payload.message
+        : fallback;
+
+    return { message, fieldErrors: readFieldErrors(payload.fieldErrors) };
   } catch {
-    return fallback;
+    return { message: fallback, fieldErrors: {} };
   }
 }
 
@@ -63,10 +83,18 @@ async function request<T>(path: string, init: RequestInit): Promise<T> {
   }
 
   if (!response.ok) {
-    throw new AuthError(await readErrorMessage(response), response.status);
+    const { message, fieldErrors } = await readErrorPayload(response);
+    throw new AuthError(message, response.status, fieldErrors);
   }
 
+  if (response.status === 204) return undefined as T;
+
   return (await response.json()) as T;
+}
+
+function authHeaders(): Record<string, string> {
+  const token = getStoredAccessToken();
+  return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
 export async function login(
@@ -110,4 +138,33 @@ export async function fetchSessionUser(token: string): Promise<User> {
   });
 
   return session.user;
+}
+
+export async function getProfile(): Promise<ProfileUser> {
+  return request<ProfileUser>("/profile", {
+    method: "GET",
+    headers: authHeaders(),
+  });
+}
+
+export async function updateProfile(details: {
+  firstName: string;
+  lastName: string;
+}): Promise<ProfileUser> {
+  return request<ProfileUser>("/profile", {
+    method: "PATCH",
+    headers: authHeaders(),
+    body: JSON.stringify(details),
+  });
+}
+
+export async function changePassword(input: {
+  currentPassword: string;
+  newPassword: string;
+}): Promise<void> {
+  await request<void>("/password-change", {
+    method: "POST",
+    headers: authHeaders(),
+    body: JSON.stringify(input),
+  });
 }

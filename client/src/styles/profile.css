@@ -1,0 +1,50 @@
+.profile-grid {
+  align-items: start;
+}
+
+.profile-meta {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 0.55rem 1.25rem;
+  margin: 0 0 1.5rem;
+}
+
+.profile-meta dt {
+  color: var(--text-muted);
+  font-size: 0.875rem;
+}
+
+.profile-meta dd {
+  margin: 0;
+  color: var(--text-primary);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.profile-meta__id {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.profile-input--readonly {
+  background: #f2f5fa;
+  color: var(--text-muted);
+  cursor: default;
+}
+
+.profile-hint {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
+@media (max-width: 700px) {
+  .profile-meta {
+    grid-template-columns: 1fr;
+    gap: 0.2rem;
+  }
+
+  .profile-meta dd {
+    margin-bottom: 0.6rem;
+  }
+}

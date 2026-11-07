@@ -30,3 +30,17 @@ export interface RegisterInput {
 export interface PasswordResetResult {
   retryAfterSeconds: number;
 }
+
+export interface ProfileUser extends User {
+  createdAt: string;
+}
+
+export interface ProfileUpdateInput {
+  firstName?: string;
+  lastName?: string;
+}
+
+export interface PasswordChangeInput {
+  currentPassword: string;
+  newPassword: string;
+}

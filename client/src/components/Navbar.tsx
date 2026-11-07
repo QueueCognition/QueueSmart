@@ -6,6 +6,7 @@ import { isStaff } from "../utils/roleUtils";
 function Navbar() {
   const [scheduleOpen, setScheduleOpen] = useState(false);
   const [managementOpen, setManagementOpen] = useState(false);
+  const [accountOpen, setAccountOpen] = useState(false);
   const { user, isAuthenticated, isInitializing, logout } = useAuth();
 
   return (
@@ -59,71 +60,92 @@ function Navbar() {
           )}
         </div>
 
-        {isAuthenticated ? (
-          isStaff(user) ? (
+        {isAuthenticated && (
+          <>
+            {isStaff(user) && (
+              <div
+                className="navbar-dropdown"
+                onMouseEnter={() => setManagementOpen(true)}
+                onMouseLeave={() => setManagementOpen(false)}
+              >
+                <button
+                  type="button"
+                  className="navbar-link navbar-dropdown-trigger"
+                  onClick={() => setManagementOpen((prev) => !prev)}
+                >
+                  Management ▾
+                </button>
+
+                {managementOpen && (
+                  <div className="navbar-dropdown-menu">
+                    <Link
+                      to="/admin"
+                      className="navbar-dropdown-item"
+                      onClick={() => setManagementOpen(false)}
+                    >
+                      Admin Dashboard
+                    </Link>
+
+                    <Link
+                      to="/admin/services"
+                      className="navbar-dropdown-item"
+                      onClick={() => setManagementOpen(false)}
+                    >
+                      Service Management
+                    </Link>
+
+                    <Link
+                      to="/admin/queues"
+                      className="navbar-dropdown-item"
+                      onClick={() => setManagementOpen(false)}
+                    >
+                      Queue Management
+                    </Link>
+                  </div>
+                )}
+              </div>
+            )}
+
             <div
-              className="navbar-dropdown"
-              onMouseEnter={() => setManagementOpen(true)}
-              onMouseLeave={() => setManagementOpen(false)}
+              className="navbar-dropdown navbar-dropdown--right"
+              onMouseEnter={() => setAccountOpen(true)}
+              onMouseLeave={() => setAccountOpen(false)}
             >
               <button
                 type="button"
                 className="navbar-link navbar-dropdown-trigger"
-                onClick={() => setManagementOpen((prev) => !prev)}
+                onClick={() => setAccountOpen((prev) => !prev)}
               >
-                Management ▾
+                {user ? `${user.firstName} ${user.lastName}` : "Account"} ▾
               </button>
 
-              {managementOpen && (
+              {accountOpen && (
                 <div className="navbar-dropdown-menu">
                   <Link
-                    to="/admin"
+                    to="/profile"
                     className="navbar-dropdown-item"
-                    onClick={() => setManagementOpen(false)}
+                    onClick={() => setAccountOpen(false)}
                   >
-                    Admin Dashboard
-                  </Link>
-
-                  <Link
-                    to="/admin/services"
-                    className="navbar-dropdown-item"
-                    onClick={() => setManagementOpen(false)}
-                  >
-                    Service Management
-                  </Link>
-
-                  <Link
-                    to="/admin/queues"
-                    className="navbar-dropdown-item"
-                    onClick={() => setManagementOpen(false)}
-                  >
-                    Queue Management
+                    My profile
                   </Link>
 
                   <button
                     type="button"
                     className="navbar-dropdown-item navbar-dropdown-button"
                     onClick={() => {
-                      setManagementOpen(false);
+                      setAccountOpen(false);
                       logout();
                     }}
                   >
                     Sign out
-                    {user ? ` (${user.firstName} ${user.lastName})` : ""}
                   </button>
                 </div>
               )}
             </div>
-          ) : (
-            <button
-              type="button"
-              className="navbar-link"
-              onClick={logout}
-            >
-              Sign out{user ? ` (${user.firstName} ${user.lastName})` : ""}
-            </button>
-          )
-        ) : isInitializing ? null : (
+          </>
+        )}
+
+        {!isAuthenticated && !isInitializing && (
           <NavLink to="/login" className="navbar-link">
             Sign in
           </NavLink>

@@ -1,5 +1,5 @@
 import { db } from "../db/sqlite";
-import type { User, UserRole } from "../types/auth";
+import type { ProfileUser, User, UserRole } from "../types/auth";
 import { hashPassword } from "../utils/password";
 
 export interface StoredUser extends User {
@@ -97,4 +97,47 @@ export function toPublicUser(user: StoredUser): User {
     email: user.email,
     role: user.role,
   };
+}
+
+export interface UserNameUpdate {
+  firstName?: string;
+  lastName?: string;
+}
+
+export function updateUserName(
+  id: string,
+  updates: UserNameUpdate,
+): StoredUser | undefined {
+  const assignments: string[] = [];
+  const values: string[] = [];
+
+  if (updates.firstName !== undefined) {
+    assignments.push("first_name = ?");
+    values.push(updates.firstName);
+  }
+
+  if (updates.lastName !== undefined) {
+    assignments.push("last_name = ?");
+    values.push(updates.lastName);
+  }
+
+  if (assignments.length === 0) return findUserById(id);
+
+  db.prepare(`UPDATE users SET ${assignments.join(", ")} WHERE id = ?`).run(
+    ...values,
+    id,
+  );
+
+  return findUserById(id);
+}
+
+export function updateUserPassword(id: string, password: string): void {
+  db.prepare("UPDATE users SET password_hash = ? WHERE id = ?").run(
+    hashPassword(password),
+    id,
+  );
+}
+
+export function toProfileUser(user: StoredUser): ProfileUser {
+  return { ...toPublicUser(user), createdAt: user.createdAt };
 }

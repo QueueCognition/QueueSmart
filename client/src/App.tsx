@@ -11,6 +11,7 @@ import JoinQueue from "./pages/JoinQueue";
 import QueueStatus from "./pages/QueueStatus";
 import Dashboard from "./pages/Dashboard";
 import Calendar from "./pages/Calendar";
+import Profile from "./pages/Profile";
 import AdminDashboard from "./pages/AdminDashboard";
 import ProtectedRoute from "./components/ProtectedRoute";
 import NotificationTester from "./components/NotificationTester";
@@ -51,6 +52,15 @@ function App() {
               element={
                 <ProtectedRoute>
                   <Calendar />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/profile"
+              element={
+                <ProtectedRoute>
+                  <Profile />
                 </ProtectedRoute>
               }
             />

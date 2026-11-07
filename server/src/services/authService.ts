@@ -10,17 +10,23 @@ import {
   findUserById,
   hasUsers,
   insertUser,
+  toProfileUser,
   toPublicUser,
+  updateUserName,
+  updateUserPassword,
   type StoredUser,
 } from "../models/userStore";
 import type {
   AuthSession,
   LoginInput,
+  PasswordChangeInput,
   PasswordResetResult,
+  ProfileUpdateInput,
+  ProfileUser,
   RegisterInput,
   User,
 } from "../types/auth";
-import { AuthError } from "../utils/errors";
+import { AuthError, ValidationError } from "../utils/errors";
 import { verifyPassword } from "../utils/password";
 import { issueToken, verifyToken } from "../utils/token";
 
@@ -108,4 +114,38 @@ export async function verifySession(
   if (!user) throw new AuthError(INVALID_SESSION_MESSAGE, 401);
 
   return toPublicUser(user);
+}
+
+export async function getProfile(userId: string): Promise<ProfileUser> {
+  const user = findUserById(userId);
+  if (!user) throw new AuthError("Authentication required", 401);
+
+  return toProfileUser(user);
+}
+
+export async function updateProfile(
+  userId: string,
+  input: ProfileUpdateInput,
+): Promise<ProfileUser> {
+  const updated = updateUserName(userId, input);
+  if (!updated) throw new AuthError("Authentication required", 401);
+
+  return toProfileUser(updated);
+}
+
+export async function changePassword(
+  userId: string,
+  input: PasswordChangeInput,
+): Promise<void> {
+  const user = findUserById(userId);
+  if (!user) throw new AuthError("Authentication required", 401);
+
+  if (!verifyPassword(input.currentPassword, user.passwordHash)) {
+    throw new ValidationError(
+      { currentPassword: "Current password is incorrect" },
+      "Current password is incorrect",
+    );
+  }
+
+  updateUserPassword(userId, input.newPassword);
 }

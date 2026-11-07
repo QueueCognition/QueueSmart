@@ -1,14 +1,22 @@
 import assert from "node:assert/strict";
 import { before, describe, it } from "node:test";
 import { config } from "../../src/config/env";
-import { findUserByEmail, insertUser } from "../../src/models/userStore";
 import {
+  findUserByEmail,
+  findUserById,
+  insertUser,
+} from "../../src/models/userStore";
+import {
+  changePassword,
+  getProfile,
   login,
   register,
   requestPasswordReset,
+  updateProfile,
   verifySession,
 } from "../../src/services/authService";
-import { AuthError } from "../../src/utils/errors";
+import { AuthError, ValidationError } from "../../src/utils/errors";
+import { verifyPassword } from "../../src/utils/password";
 import { issueToken } from "../../src/utils/token";
 
 const DEMO_EMAIL = "demo@queuesmart.dev";
@@ -218,6 +226,139 @@ describe("verifySession", () => {
     await assert.rejects(
       verifySession(token, null),
       /Invalid or expired session/,
+    );
+  });
+});
+
+describe("getProfile", () => {
+  before(() => {
+    insertUser({
+      id: "u_profile",
+      firstName: "Profile",
+      lastName: "Owner",
+      email: "profile.owner@example.com",
+      password: PASSWORD,
+      role: "user",
+    });
+  });
+
+  it("returns the public profile fields plus createdAt", async () => {
+    const profile = await getProfile("u_profile");
+
+    assert.deepEqual(Object.keys(profile).sort(), [
+      "createdAt",
+      "email",
+      "firstName",
+      "id",
+      "lastName",
+      "role",
+    ]);
+    assert.equal(profile.id, "u_profile");
+    assert.equal(profile.email, "profile.owner@example.com");
+    assert.equal(
+      profile.createdAt,
+      findUserById("u_profile")?.createdAt,
+    );
+  });
+
+  it("rejects an unknown user", async () => {
+    await assert.rejects(
+      getProfile("u_missing_profile"),
+      (error: unknown) => {
+        assert.ok(error instanceof AuthError);
+        assert.equal(error.status, 401);
+        return true;
+      },
+    );
+  });
+});
+
+describe("updateProfile", () => {
+  it("updates the provided names and keeps the rest", async () => {
+    const updated = await updateProfile("u_profile", {
+      firstName: "Updated",
+    });
+
+    assert.equal(updated.firstName, "Updated");
+    assert.equal(updated.lastName, "Owner");
+    assert.equal(updated.email, "profile.owner@example.com");
+  });
+
+  it("returns the new name in later sessions", async () => {
+    const session = await login(
+      { email: "profile.owner@example.com", password: PASSWORD },
+      null,
+    );
+    const user = await verifySession(session.token, null);
+
+    assert.equal(user.firstName, "Updated");
+  });
+
+  it("rejects an unknown user", async () => {
+    await assert.rejects(
+      updateProfile("u_missing_profile", { firstName: "Nobody" }),
+      (error: unknown) => {
+        assert.ok(error instanceof AuthError);
+        assert.equal(error.status, 401);
+        return true;
+      },
+    );
+  });
+});
+
+describe("changePassword", () => {
+  before(() => {
+    insertUser({
+      id: "u_change_password",
+      firstName: "Password",
+      lastName: "Owner",
+      email: "password.owner@example.com",
+      password: PASSWORD,
+      role: "user",
+    });
+  });
+
+  it("rejects a wrong current password", async () => {
+    await assert.rejects(
+      changePassword("u_change_password", {
+        currentPassword: "wrong-password",
+        newPassword: "new-password456",
+      }),
+      (error: unknown) => {
+        assert.ok(error instanceof ValidationError);
+        assert.equal(error.status, 400);
+        assert.equal(
+          error.fieldErrors?.currentPassword,
+          "Current password is incorrect",
+        );
+        return true;
+      },
+    );
+  });
+
+  it("replaces the stored hash", async () => {
+    await changePassword("u_change_password", {
+      currentPassword: PASSWORD,
+      newPassword: "new-password456",
+    });
+
+    const stored = findUserById("u_change_password");
+    assert.ok(stored);
+    assert.equal(verifyPassword("new-password456", stored.passwordHash), true);
+    assert.equal(verifyPassword(PASSWORD, stored.passwordHash), false);
+  });
+
+  it("rejects an unknown user", async () => {
+    await assert.rejects(
+      changePassword("u_missing_password", {
+        currentPassword: PASSWORD,
+        newPassword: "new-password456",
+      }),
+      (error: unknown) => {
+        assert.ok(error instanceof AuthError);
+        assert.equal(error.status, 401);
+        return true;
+      },
     );
   });
 });

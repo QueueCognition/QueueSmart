@@ -31,3 +31,7 @@ export interface AuthSession {
   expiresAt: string;
   boundIp: string | null;
 }
+
+export interface ProfileUser extends User {
+  createdAt: string;
+}

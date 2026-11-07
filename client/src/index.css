@@ -103,6 +103,12 @@ body {
   white-space: nowrap;
 }
 
+.navbar-dropdown--right .navbar-dropdown-menu {
+  left: auto;
+  right: 0;
+  transform: none;
+}
+
 .navbar-dropdown-button {
   width: 100%;
   text-align: left;

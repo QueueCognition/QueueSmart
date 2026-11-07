@@ -3,7 +3,9 @@ import { describe, it } from "node:test";
 import { ValidationError } from "../../src/utils/errors";
 import {
   validateLogin,
+  validatePasswordChange,
   validatePasswordReset,
+  validateProfileUpdate,
   validateRegister,
 } from "../../src/validators/authValidators";
 
@@ -114,5 +116,87 @@ describe("validatePasswordReset", () => {
     assert.deepEqual(fieldErrors(() => validatePasswordReset({ email: "nope" })), {
       email: "Enter a valid email address",
     });
+  });
+});
+
+describe("validateProfileUpdate", () => {
+  it("returns only the provided fields and trims them", () => {
+    assert.deepEqual(validateProfileUpdate({ firstName: "  Demo  " }), {
+      firstName: "Demo",
+    });
+    assert.deepEqual(
+      validateProfileUpdate({ firstName: " Demo ", lastName: " User " }),
+      { firstName: "Demo", lastName: "User" },
+    );
+  });
+
+  it("rejects an empty name", () => {
+    assert.deepEqual(fieldErrors(() => validateProfileUpdate({ firstName: "" })), {
+      firstName: "First name is required",
+    });
+  });
+
+  it("rejects an overlong name", () => {
+    assert.deepEqual(
+      fieldErrors(() => validateProfileUpdate({ lastName: "a".repeat(51) })),
+      { lastName: "Must be under 50 characters" },
+    );
+  });
+
+  it("requires at least one editable field", () => {
+    for (const body of [{}, { email: "demo@queuesmart.dev" }, null]) {
+      assert.throws(
+        () => validateProfileUpdate(body),
+        (error: unknown) =>
+          error instanceof ValidationError &&
+          error.message === "No profile changes were provided",
+      );
+    }
+  });
+});
+
+describe("validatePasswordChange", () => {
+  it("accepts a valid password change", () => {
+    assert.deepEqual(
+      validatePasswordChange({
+        currentPassword: "password123",
+        newPassword: "new-password456",
+      }),
+      { currentPassword: "password123", newPassword: "new-password456" },
+    );
+  });
+
+  it("reports both missing passwords", () => {
+    assert.deepEqual(fieldErrors(() => validatePasswordChange({})), {
+      currentPassword: "Current password is required",
+      newPassword: "Password is required",
+    });
+  });
+
+  it("requires at least 8 characters for the new password", () => {
+    assert.deepEqual(
+      fieldErrors(() =>
+        validatePasswordChange({
+          currentPassword: "password123",
+          newPassword: "1234567",
+        }),
+      ),
+      { newPassword: "Password must be at least 8 characters" },
+    );
+  });
+
+  it("rejects reusing the current password", () => {
+    assert.deepEqual(
+      fieldErrors(() =>
+        validatePasswordChange({
+          currentPassword: "password123",
+          newPassword: "password123",
+        }),
+      ),
+      {
+        newPassword:
+          "New password must be different from your current password",
+      },
+    );
   });
 });
