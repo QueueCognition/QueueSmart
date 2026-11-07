@@ -210,3 +210,75 @@ describe("Service Management API", () => {
     assert.equal(response.status, 400);
   });
 });
+
+describe("PATCH /api/services/:id/availability", () => {
+  it("requires authentication", async () => {
+    const service = new ServiceService(database).createService(serviceBody());
+
+    const response = await request(app)
+      .patch(`/api/services/${service.id}/availability`)
+      .send({ isAvailable: false });
+
+    assert.equal(response.status, 401);
+  });
+
+  it("rejects regular users", async () => {
+    const service = new ServiceService(database).createService(serviceBody());
+
+    const response = await request(app)
+      .patch(`/api/services/${service.id}/availability`)
+      .set(actingAs("service-user", "user"))
+      .send({ isAvailable: false });
+
+    assert.equal(response.status, 403);
+  });
+
+  it("lets staff pause and resume a service", async () => {
+    const service = new ServiceService(database).createService(serviceBody());
+
+    const paused = await request(app)
+      .patch(`/api/services/${service.id}/availability`)
+      .set(actingAs("service-staff", "staff"))
+      .send({ isAvailable: false });
+
+    assert.equal(paused.status, 200);
+    assert.equal(paused.body.data.isAvailable, false);
+
+    const resumed = await request(app)
+      .patch(`/api/services/${service.id}/availability`)
+      .set(actingAs("service-staff", "staff"))
+      .send({ isAvailable: true });
+
+    assert.equal(resumed.status, 200);
+    assert.equal(resumed.body.data.isAvailable, true);
+  });
+
+  it("rejects a non-boolean isAvailable", async () => {
+    const service = new ServiceService(database).createService(serviceBody());
+
+    const response = await request(app)
+      .patch(`/api/services/${service.id}/availability`)
+      .set(actingAs("service-admin", "admin"))
+      .send({ isAvailable: "false" });
+
+    assert.equal(response.status, 400);
+  });
+
+  it("returns 404 for a missing service", async () => {
+    const response = await request(app)
+      .patch("/api/services/999/availability")
+      .set(actingAs("service-admin", "admin"))
+      .send({ isAvailable: false });
+
+    assert.equal(response.status, 404);
+  });
+
+  it("rejects invalid service IDs", async () => {
+    const response = await request(app)
+      .patch("/api/services/abc/availability")
+      .set(actingAs("service-admin", "admin"))
+      .send({ isAvailable: false });
+
+    assert.equal(response.status, 400);
+  });
+});

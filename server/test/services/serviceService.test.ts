@@ -147,6 +147,71 @@ describe("Service Management", () => {
     }
   });
 
+  it("creates services as available", () => {
+    const database = createTestDatabase();
+    try {
+      const serviceService = new ServiceService(database);
+      const created = serviceService.createService(validService);
+
+      assert.equal(created.isAvailable, true);
+      assert.equal(serviceService.listServices()[0]?.isAvailable, true);
+    } finally {
+      database.close();
+    }
+  });
+
+  it("toggles availability and reads it back", () => {
+    const database = createTestDatabase();
+    try {
+      const serviceService = new ServiceService(database);
+      const created = serviceService.createService(validService);
+
+      const paused = serviceService.setAvailability(created.id, false);
+
+      assert.equal(paused?.isAvailable, false);
+      assert.equal(serviceService.listServices()[0]?.isAvailable, false);
+
+      const resumed = serviceService.setAvailability(created.id, true);
+
+      assert.equal(resumed?.isAvailable, true);
+      assert.equal(serviceService.listServices()[0]?.isAvailable, true);
+    } finally {
+      database.close();
+    }
+  });
+
+  it("returns undefined when toggling a nonexistent service", () => {
+    const database = createTestDatabase();
+    try {
+      const serviceService = new ServiceService(database);
+
+      assert.equal(serviceService.setAvailability(999, false), undefined);
+    } finally {
+      database.close();
+    }
+  });
+
+  it("keeps availability when other fields are updated", () => {
+    const database = createTestDatabase();
+    try {
+      const serviceService = new ServiceService(database);
+      const created = serviceService.createService(validService);
+      serviceService.setAvailability(created.id, false);
+
+      const updated = serviceService.updateService(created.id, {
+        name: "Renamed Service",
+        description: "Renamed description.",
+        duration: 40,
+        priority: "low",
+      });
+
+      assert.equal(updated?.name, "Renamed Service");
+      assert.equal(updated?.isAvailable, false);
+    } finally {
+      database.close();
+    }
+  });
+
   it("rejects a blank service name", () => {
     const result = validateServiceInput({
       ...validService,
