@@ -12,7 +12,8 @@ CREATE TABLE IF NOT EXISTS users (
   email TEXT NOT NULL COLLATE NOCASE UNIQUE CHECK (length(email) <= 254),
   role TEXT NOT NULL CHECK (role IN ('user', 'staff', 'admin')),
   password_hash TEXT NOT NULL CHECK (length(password_hash) > 0),
-  created_at TEXT NOT NULL
+  created_at TEXT NOT NULL,
+  token_version INTEGER NOT NULL DEFAULT 0 CHECK (token_version >= 0)
 );
 
 CREATE TABLE IF NOT EXISTS password_reset_requests (
@@ -111,8 +112,17 @@ function openDatabase(): DatabaseSync {
   const database = new DatabaseSync(file);
   database.exec("PRAGMA foreign_keys = ON");
   database.exec(SCHEMA);
+  migrateUserTokenVersion(database);
   migrateQueueEntries(database);
   return database;
+}
+
+function migrateUserTokenVersion(database: DatabaseSync): void {
+  if (tableColumns(database, "users").has("token_version")) return;
+
+  database.exec(
+    "ALTER TABLE users ADD COLUMN token_version INTEGER NOT NULL DEFAULT 0",
+  );
 }
 
 function tableColumns(database: DatabaseSync, table: string): Set<string> {

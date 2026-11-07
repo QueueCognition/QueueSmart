@@ -40,7 +40,14 @@ before(() => {
 });
 
 function actingAs(id: string, role: UserRole = "user") {
-  const { token } = issueToken(id, role, null, config.jwtSecret, config.tokenTtlSeconds);
+  const { token } = issueToken(
+    id,
+    role,
+    null,
+    config.jwtSecret,
+    config.tokenTtlSeconds,
+    0,
+  );
   return { authorization: `Bearer ${token}` };
 }
 

@@ -382,6 +382,10 @@ describe("POST /auth/password-change", () => {
     assert.equal(changed.status, 204);
     assert.equal(changed.body, null);
 
+    const staleSession = await send("GET", "/auth/profile", undefined, token);
+    assert.equal(staleSession.status, 401);
+    assert.match(String(staleSession.body?.message), /password was changed/i);
+
     const oldLogin = await post("/auth/login", {
       email: PASSWORD_EMAIL,
       password: PASSWORD,
@@ -393,6 +397,15 @@ describe("POST /auth/password-change", () => {
       password: "new-password456",
     });
     assert.equal(newLogin.status, 200);
+
+    const freshSession = await send(
+      "GET",
+      "/auth/profile",
+      undefined,
+      String(newLogin.body?.token),
+    );
+    assert.equal(freshSession.status, 200);
+    assert.equal(freshSession.body?.email, PASSWORD_EMAIL);
   });
 });
 

@@ -12,6 +12,7 @@ export interface TokenClaims {
   ip: string | null;
   iat: number;
   exp: number;
+  ver: number;
 }
 
 export interface IssuedToken {
@@ -29,6 +30,7 @@ export function issueToken(
   ip: string | null,
   secret: string,
   ttlSeconds: number,
+  tokenVersion: number,
 ): IssuedToken {
   const issuedAt = Math.floor(Date.now() / 1000);
   const claims: TokenClaims = {
@@ -37,6 +39,7 @@ export function issueToken(
     ip,
     iat: issuedAt,
     exp: issuedAt + ttlSeconds,
+    ver: tokenVersion,
   };
 
   const payloadSegment = Buffer.from(JSON.stringify(claims)).toString(
@@ -109,11 +112,21 @@ function parseClaims(segment: string): TokenClaims {
     throw new Error("Malformed token payload");
   }
 
+  const version = claims.ver ?? 0;
+  if (
+    typeof version !== "number" ||
+    !Number.isInteger(version) ||
+    version < 0
+  ) {
+    throw new Error("Malformed token payload");
+  }
+
   return {
     sub: claims.sub,
     role: claims.role as UserRole,
     ip: typeof claims.ip === "string" ? claims.ip : null,
     iat: claims.iat,
     exp: claims.exp,
+    ver: version,
   };
 }

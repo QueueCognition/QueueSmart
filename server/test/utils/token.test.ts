@@ -1,12 +1,32 @@
 import assert from "node:assert/strict";
+import { createHmac } from "node:crypto";
 import { describe, it } from "node:test";
 import { issueToken, verifyToken } from "../../src/utils/token";
 
 const SECRET = "unit-test-secret";
 const OTHER_SECRET = "another-unit-test-secret";
 
-function issued(ttlSeconds = 3600) {
-  return issueToken("u_demo", "user", "127.0.0.1", SECRET, ttlSeconds);
+function issued(ttlSeconds = 3600, tokenVersion = 0) {
+  return issueToken(
+    "u_demo",
+    "user",
+    "127.0.0.1",
+    SECRET,
+    ttlSeconds,
+    tokenVersion,
+  );
+}
+
+function signedToken(claims: Record<string, unknown>): string {
+  const header = Buffer.from(
+    JSON.stringify({ alg: "HS256", typ: "JWT" }),
+  ).toString("base64url");
+  const payload = Buffer.from(JSON.stringify(claims)).toString("base64url");
+  const signature = createHmac("sha256", SECRET)
+    .update(`${header}.${payload}`)
+    .digest("base64url");
+
+  return `${header}.${payload}.${signature}`;
 }
 
 describe("issueToken", () => {
@@ -18,12 +38,14 @@ describe("issueToken", () => {
       null,
       SECRET,
       3600,
+      3,
     );
     const claims = verifyToken(token, SECRET);
 
     assert.equal(claims.sub, "u_admin");
     assert.equal(claims.role, "admin");
     assert.equal(claims.ip, null);
+    assert.equal(claims.ver, 3);
     assert.ok(claims.iat >= before);
     assert.equal(claims.exp, claims.iat + 3600);
     assert.equal(new Date(expiresAt).getTime(), claims.exp * 1000);
@@ -75,5 +97,25 @@ describe("verifyToken", () => {
   it("rejects malformed tokens", () => {
     assert.throws(() => verifyToken("not-a-token", SECRET), /Malformed token/);
     assert.throws(() => verifyToken("a.b", SECRET), /Malformed token/);
+  });
+
+  it("treats a token without a version claim as version 0", () => {
+    const now = Math.floor(Date.now() / 1000);
+    const token = signedToken({
+      sub: "u_demo",
+      role: "user",
+      ip: null,
+      iat: now,
+      exp: now + 3600,
+    });
+
+    assert.equal(verifyToken(token, SECRET).ver, 0);
+  });
+
+  it("rejects a negative version claim", () => {
+    assert.throws(
+      () => verifyToken(issued(3600, -1).token, SECRET),
+      /Malformed token payload/,
+    );
   });
 });

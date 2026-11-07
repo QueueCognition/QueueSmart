@@ -42,6 +42,7 @@ describe("insertUser", () => {
     assert.equal(created.email, "store.test@example.com");
     assert.match(created.passwordHash, /^[0-9a-f]{32}:[0-9a-f]{128}$/);
     assert.equal(created.passwordHash.includes("password123"), false);
+    assert.equal(created.tokenVersion, 0);
     assert.equal(findUserById("u_store_test")?.role, "staff");
   });
 });
@@ -100,5 +101,15 @@ describe("updateUserPassword", () => {
     assert.equal(verifyPassword("password123", stored.passwordHash), false);
     assert.equal(stored.email, "password.test@example.com");
     assert.equal(stored.firstName, "Password");
+    assert.equal(stored.tokenVersion, 1);
+  });
+
+  it("increments the token version on every password change", () => {
+    const before = findUserById("u_password_test")?.tokenVersion ?? 0;
+
+    updateUserPassword("u_password_test", "another-password-789");
+    updateUserPassword("u_password_test", "third-password-012");
+
+    assert.equal(findUserById("u_password_test")?.tokenVersion, before + 2);
   });
 });

@@ -21,10 +21,10 @@ interface AuthContextValue {
   user: User | null;
   isAuthenticated: boolean;
   isInitializing: boolean;
-  sessionInvalidated: boolean;
+  sessionNotice: string | null;
   login: (credentials: LoginCredentials) => Promise<User>;
   register: (details: RegisterDetails) => Promise<User>;
-  logout: () => void;
+  logout: (notice?: string) => void;
   updateUser: (updates: Partial<User>) => void;
 }
 
@@ -71,7 +71,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     readStoredSession(),
   );
   const [verifiedToken, setVerifiedToken] = useState<string | null>(null);
-  const [sessionInvalidated, setSessionInvalidated] = useState(false);
+  const [sessionNotice, setSessionNotice] = useState<string | null>(null);
   const navigate = useNavigate();
 
   const isInitializing = session !== null && verifiedToken !== session.token;
@@ -104,7 +104,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         clearStoredSession();
         setSession(null);
         setVerifiedToken(null);
-        setSessionInvalidated(true);
+        setSessionNotice(error.message);
         navigate("/login", { replace: true });
       });
 
@@ -116,7 +116,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const applySession = useCallback(
     (nextSession: AuthSession, remember: boolean) => {
       persistSession(nextSession, remember);
-      setSessionInvalidated(false);
+      setSessionNotice(null);
       setVerifiedToken(nextSession.token);
       setSession(nextSession);
     },
@@ -155,11 +155,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [applySession],
   );
 
-  const logout = useCallback(() => {
+  const logout = useCallback((notice?: string) => {
     void authService.logout();
     clearStoredSession();
     setSession(null);
     setVerifiedToken(null);
+    setSessionNotice(notice ?? null);
   }, []);
 
   const value = useMemo<AuthContextValue>(
@@ -167,7 +168,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       user: session?.user ?? null,
       isAuthenticated: session !== null,
       isInitializing,
-      sessionInvalidated,
+      sessionNotice,
       login,
       register,
       logout,
@@ -176,7 +177,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [
       session,
       isInitializing,
-      sessionInvalidated,
+      sessionNotice,
       login,
       register,
       logout,

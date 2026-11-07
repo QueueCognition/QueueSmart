@@ -17,12 +17,13 @@ function Login() {
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [formError, setFormError] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const { login, sessionInvalidated } = useAuth();
+  const { login, sessionNotice } = useAuth();
   const { push } = useNotifications();
   const navigate = useNavigate();
   const location = useLocation();
 
-  const redirectTo = (location.state as { from?: string } | null)?.from ?? "/";
+  const locationState = location.state as { from?: string } | null;
+  const redirectTo = locationState?.from ?? "/";
 
   function validate() {
     const next: FieldErrors = {};
@@ -68,10 +69,9 @@ function Login() {
           </p>
         </header>
 
-        {sessionInvalidated && (
+        {sessionNotice && (
           <p className="auth__alert auth__alert--warning" role="status">
-            Your session ended because your network address changed. Please sign
-            in again.
+            {sessionNotice}
           </p>
         )}
 
