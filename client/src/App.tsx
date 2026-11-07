@@ -84,15 +84,14 @@ function App() {
             />
 
             <Route
-              path="/services"
+              path="/admin/services"
               element={
                 <ProtectedRoute minRole="staff">
-                  <AdminDashboard />
+                  <ServiceManagement />
                 </ProtectedRoute>
               }
             />
 
-            <Route path="/admin/services" element={<ServiceManagement />} />
             <Route
               path="/admin/queues"
               element={
