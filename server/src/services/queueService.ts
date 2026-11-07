@@ -94,12 +94,19 @@ export class QueueService {
     return entry;
   }
 
-  private activeEntries(serviceId: string): QueueEntryRecord[] {
-    return listEntries()
+  private activeEntriesFrom(
+    entries: readonly QueueEntryRecord[],
+    serviceId: string,
+  ): QueueEntryRecord[] {
+    return entries
       .filter(
         (e) => String(e.serviceId) === String(serviceId).trim() && isActive(e),
       )
       .sort(compareEntries);
+  }
+
+  private activeEntries(serviceId: string): QueueEntryRecord[] {
+    return this.activeEntriesFrom(listEntries(), serviceId);
   }
 
   private refresh(service: Service): void {
@@ -112,7 +119,16 @@ export class QueueService {
   }
 
   private summarize(service: Service): QueueSummaryRecord {
-    const waitingList = this.activeEntries(service.id).map((e) => ({ ...e }));
+    return this.summarizeFrom(listEntries(), service);
+  }
+
+  private summarizeFrom(
+    entries: readonly QueueEntryRecord[],
+    service: Service,
+  ): QueueSummaryRecord {
+    const waitingList = this.activeEntriesFrom(entries, service.id).map((e) => ({
+      ...e,
+    }));
     const lastEntry = waitingList[waitingList.length - 1];
     return {
       service: { ...service },
@@ -267,7 +283,8 @@ export class QueueService {
 
   async listAdminQueues(): Promise<QueueSummaryRecord[]> {
     const services = await this.catalog.list();
-    return services.map((service) => this.summarize(service));
+    const entries = listEntries();
+    return services.map((service) => this.summarizeFrom(entries, service));
   }
 
   async serveNext(serviceId: string): Promise<ServeNextResult> {
