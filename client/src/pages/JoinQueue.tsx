@@ -125,6 +125,11 @@ function JoinQueue() {
       return;
     }
 
+    if (!selectedService.isAvailable) {
+      setFormError("This service is not accepting new entries right now.");
+      return;
+    }
+
     setFormError("");
     setSubmitting(true);
     try {
@@ -182,8 +187,9 @@ function JoinQueue() {
             >
               <option value="">Select a service...</option>
               {services.map((s) => (
-                <option key={s.id} value={s.id}>
+                <option key={s.id} value={s.id} disabled={!s.isAvailable}>
                   {s.name}
+                  {s.isAvailable ? "" : " (paused)"}
                 </option>
               ))}
             </select>

@@ -1,72 +1,30 @@
-import { useEffect, useState } from "react";
-import {
-  getAdminServiceWaitSummaries,
-  serveNextInQueue,
-  type AdminServiceQueueSummary,
-} from "../services/adminQueueService";
+import { useState } from "react";
+import { useAdminQueues } from "../hooks/useAdminQueues";
 import "../styles/queuemanagement.css";
 
 function QueueManagement() {
-  const [summaries, setSummaries] = useState<AdminServiceQueueSummary[]>([]);
+  const {
+    summaries,
+    loading,
+    error,
+    servingServiceId,
+    serveNext,
+  } = useAdminQueues();
+
   const [selectedServiceId, setSelectedServiceId] = useState("");
-  const [loading, setLoading] = useState(true);
-  const [serving, setServing] = useState(false);
-  const [error, setError] = useState("");
 
-  useEffect(() => {
-    let active = true;
+  const selectedSummary =
+    summaries.find((item) => item.service.id === selectedServiceId) ??
+    summaries[0];
 
-    async function refresh() {
-      try {
-        const data = await getAdminServiceWaitSummaries();
-        if (active) {
-          setSummaries(data);
-          setSelectedServiceId(
-            (current) => current || data[0]?.service.id || "",
-          );
-          setError("");
-          setLoading(false);
-        }
-      } catch (cause) {
-        if (active) {
-          setError(
-            cause instanceof Error
-              ? cause.message
-              : "Failed to load queue information.",
-          );
-          setLoading(false);
-        }
-      }
-    }
-
-    void refresh();
-    const interval = window.setInterval(() => void refresh(), 5000);
-    return () => {
-      active = false;
-      window.clearInterval(interval);
-    };
-  }, []);
-
-  const selectedSummary = summaries.find(
-    (item) => item.service.id === selectedServiceId,
-  );
   const queue = selectedSummary?.waitingList ?? [];
+  const activeServiceId = selectedSummary?.service.id ?? "";
+  const serving = servingServiceId === activeServiceId;
 
   async function handleServeNext() {
     if (!selectedSummary || queue.length === 0) return;
 
-    setServing(true);
-    setError("");
-    try {
-      await serveNextInQueue(selectedSummary.service.id);
-      setSummaries(await getAdminServiceWaitSummaries());
-    } catch (cause) {
-      setError(
-        cause instanceof Error ? cause.message : "Failed to serve the next user.",
-      );
-    } finally {
-      setServing(false);
-    }
+    await serveNext(selectedSummary.service.id);
   }
 
   return (
@@ -81,12 +39,13 @@ function QueueManagement() {
           <label htmlFor="service-select">Service</label>
           <select
             id="service-select"
-            value={selectedServiceId}
+            value={activeServiceId}
             onChange={(event) => setSelectedServiceId(event.target.value)}
           >
             {summaries.map(({ service }) => (
               <option key={service.id} value={service.id}>
                 {service.name}
+                {service.isAvailable ? "" : " (paused)"}
               </option>
             ))}
           </select>
@@ -97,6 +56,8 @@ function QueueManagement() {
 
       {loading ? (
         <p>Loading queue...</p>
+      ) : summaries.length === 0 ? (
+        <p>No services are configured yet.</p>
       ) : (
         <>
           <section className="queue-summary">
@@ -107,9 +68,7 @@ function QueueManagement() {
 
             <div className="queue-summary__item">
               <span>Next user</span>
-              <strong>
-                {queue[0]?.customerName ?? "No one waiting"}
-              </strong>
+              <strong>{queue[0]?.customerName ?? "No one waiting"}</strong>
             </div>
 
             <button

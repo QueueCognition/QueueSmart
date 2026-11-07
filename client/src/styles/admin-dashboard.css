@@ -53,6 +53,12 @@
   animation: pulse-dot 2s infinite;
 }
 
+.admin-live-dot--idle {
+  background-color: #9ca3af;
+  box-shadow: 0 0 0 2px rgba(156, 163, 175, 0.3);
+  animation: none;
+}
+
 @keyframes pulse-dot {
   0% {
     transform: scale(0.95);
@@ -87,7 +93,7 @@
   color: var(--navy-800);
 }
 
-.admin-btn-secondary:hover {
+.admin-btn-secondary:hover:not(:disabled) {
   background: var(--navy-100);
   color: var(--navy-950);
 }
@@ -97,25 +103,24 @@
   color: #ffffff;
 }
 
-.admin-btn-primary:hover {
+.admin-btn-primary:hover:not(:disabled) {
   background: var(--navy-900);
+}
+
+.admin-btn-secondary:hover:not(:disabled) {
+  background: var(--navy-100);
+  color: var(--navy-950);
+}
+
+.admin-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
 }
 
 .admin-btn-sm {
   padding: 0.35rem 0.7rem;
   font-size: 0.8rem;
   border-radius: 6px;
-}
-
-.admin-btn-action {
-  background: #ecfdf5;
-  color: #065f46;
-  border: 1px solid #a7f3d0;
-}
-
-.admin-btn-action:hover {
-  background: #10b981;
-  color: #ffffff;
 }
 
 .admin-stats-grid {
@@ -152,8 +157,40 @@
   margin-bottom: 0.25rem;
 }
 
+.admin-stat-value--ok {
+  color: #059669;
+  font-size: 1.75rem;
+}
+
+.admin-stat-value--warn {
+  color: #b45309;
+  font-size: 1.75rem;
+}
+
 .admin-stat-subtext {
   font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.admin-alert {
+  padding: 0.75rem 1.1rem;
+  border-radius: 10px;
+  margin-bottom: 1.25rem;
+  font-size: 0.9rem;
+  background-color: #fef3c7;
+  border: 1px solid #fcd34d;
+  color: #92400e;
+}
+
+.admin-alert--success {
+  background-color: #ecfdf5;
+  border-color: #a7f3d0;
+  color: #065f46;
+}
+
+.admin-waitlist-note {
+  padding: 0.65rem 1.5rem 1rem;
+  font-size: 0.8rem;
   color: var(--text-muted);
 }
 

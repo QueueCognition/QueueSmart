@@ -1,102 +1,48 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { useNotifications } from "../context/NotificationContext";
-import {
-  getAdminServiceWaitSummaries,
-  serveNextInQueue,
-  type AdminServiceQueueSummary,
-} from "../services/adminQueueService";
+import { useAdminQueues } from "../hooks/useAdminQueues";
 import "../styles/admin-dashboard.css";
 
 function AdminDashboard() {
   const { user } = useAuth();
-  const { push } = useNotifications();
-  const [summaries, setSummaries] = useState<AdminServiceQueueSummary[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [lastRefreshed, setLastRefreshed] = useState<Date>(new Date());
+  const {
+    summaries,
+    loading,
+    error,
+    lastRefreshed,
+    servingServiceId,
+    refresh,
+    serveNext,
+  } = useAdminQueues();
+
+  const [actionNotice, setActionNotice] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedServiceFilter, setSelectedServiceFilter] = useState("all");
 
-  const refreshDashboard = useCallback(() => {
-    void getAdminServiceWaitSummaries()
-      .then((data) => {
-        setSummaries(data);
-        setLastRefreshed(new Date());
-      })
-      .catch(() => {
-        push({
-          message: "Failed to load queue summaries.",
-          type: "status_change",
-        });
-      });
-  }, [push]);
-
   useEffect(() => {
-    let mounted = true;
-    let refreshErrorNotified = false;
+    if (!actionNotice) return;
 
-    void getAdminServiceWaitSummaries()
-      .then((data) => {
-        if (!mounted) return;
-        setSummaries(data);
-        setLastRefreshed(new Date());
-        setLoading(false);
-      })
-      .catch(() => {
-        if (!mounted) return;
-        setLoading(false);
-        push({
-          message: "Failed to load queue summaries.",
-          type: "status_change",
-        });
-      });
+    const timer = window.setTimeout(() => setActionNotice(""), 4000);
+    return () => window.clearTimeout(timer);
+  }, [actionNotice]);
 
-    const interval = setInterval(() => {
-      void getAdminServiceWaitSummaries()
-        .then((data) => {
-          if (!mounted) return;
-          setSummaries(data);
-          setLastRefreshed(new Date());
-          refreshErrorNotified = false;
-        })
-        .catch(() => {
-          if (mounted && !refreshErrorNotified) {
-            push({
-              message: "Failed to refresh queue summaries.",
-              type: "status_change",
-            });
-            refreshErrorNotified = true;
-          }
-        });
-    }, 5000);
+  async function handleServeNext(serviceId: string, serviceName: string) {
+    const outcome = await serveNext(serviceId);
 
-    return () => {
-      mounted = false;
-      clearInterval(interval);
-    };
-  }, [push]);
+    if (!outcome) return;
 
-  const handleServeNext = async (serviceId: string, serviceName: string) => {
-    try {
-      const result = await serveNextInQueue(serviceId);
-      push({
-        message: `${result.served.customerName || result.served.ticketNumber || "The next customer"} was served for ${serviceName}.`,
-        type: "queue_update",
-      });
-      refreshDashboard();
-    } catch {
-      push({
-        message: "Failed to update queue entry status.",
-        type: "status_change",
-      });
-    }
-  };
+    const { served } = outcome;
+    setActionNotice(
+      `${served.customerName || served.ticketNumber || "The next customer"} was served for ${serviceName}.`,
+    );
+  }
 
   const totalServices = summaries.length;
   const availableServices = summaries.filter(
-    (item) => item.service.isAvailable !== false,
+    (item) => item.service.isAvailable,
   );
+
   const totalPeopleWaiting = summaries.reduce(
     (total, item) => total + item.waitingCount,
     0,
@@ -107,6 +53,9 @@ function AdminDashboard() {
     return [...summaries].sort((a, b) => b.waitingCount - a.waitingCount)[0];
   }, [summaries]);
 
+  const normalizedSearch = searchTerm.trim().toLowerCase();
+  const isSearching = normalizedSearch !== "";
+
   const filteredSummaries = useMemo(() => {
     return summaries
       .filter((item) => {
@@ -114,21 +63,24 @@ function AdminDashboard() {
         return item.service.id === selectedServiceFilter;
       })
       .map((item) => {
-        if (!searchTerm.trim()) return item;
-        const normalized = searchTerm.trim().toLowerCase();
+        if (!normalizedSearch) return item;
+
         const filteredList = item.waitingList.filter(
           (q) =>
-            q.customerName?.toLowerCase().includes(normalized) ||
-            q.ticketNumber?.toLowerCase().includes(normalized) ||
-            q.customerEmail?.toLowerCase().includes(normalized) ||
-            q.timeSlot?.toLowerCase().includes(normalized),
+            q.customerName?.toLowerCase().includes(normalizedSearch) ||
+            q.ticketNumber?.toLowerCase().includes(normalizedSearch) ||
+            q.customerEmail?.toLowerCase().includes(normalizedSearch) ||
+            q.timeSlot?.toLowerCase().includes(normalizedSearch),
         );
+
         return {
           ...item,
           waitingList: filteredList,
         };
       });
-  }, [summaries, selectedServiceFilter, searchTerm]);
+  }, [summaries, selectedServiceFilter, normalizedSearch]);
+
+  const isDegraded = error !== "";
 
   return (
     <div className="admin-dashboard">
@@ -140,16 +92,23 @@ function AdminDashboard() {
 
         <div className="admin-header-actions">
           <span className="admin-live-badge">
-            <span className="admin-live-dot" />
-            Live Sync
+            <span
+              className={
+                isDegraded
+                  ? "admin-live-dot admin-live-dot--idle"
+                  : "admin-live-dot"
+              }
+            />
+            {isDegraded ? "Sync Failed" : "Live Sync"}
           </span>
           <button
             type="button"
             className="admin-btn admin-btn-secondary"
-            onClick={refreshDashboard}
+            onClick={refresh}
             title="Refresh dashboard data"
           >
-            Refresh ({lastRefreshed.toLocaleTimeString()})
+            Refresh (
+            {lastRefreshed ? lastRefreshed.toLocaleTimeString() : "—"})
           </button>
         </div>
       </header>
@@ -166,6 +125,18 @@ function AdminDashboard() {
           >
             User Dashboard
           </Link>
+        </div>
+      )}
+
+      {error && (
+        <div className="admin-alert" role="alert">
+          {error}
+        </div>
+      )}
+
+      {actionNotice && (
+        <div className="admin-alert admin-alert--success" role="status">
+          {actionNotice}
         </div>
       )}
 
@@ -197,10 +168,13 @@ function AdminDashboard() {
         <div className="admin-stat-card">
           <span className="admin-stat-label">Status</span>
           <span
-            className="admin-stat-value"
-            style={{ color: "#059669", fontSize: "1.75rem" }}
+            className={
+              isDegraded
+                ? "admin-stat-value admin-stat-value--warn"
+                : "admin-stat-value admin-stat-value--ok"
+            }
           >
-            Operational
+            {isDegraded ? "Degraded" : "Operational"}
           </span>
           <span className="admin-stat-subtext">Auto-refresh: 5s</span>
         </div>
@@ -218,12 +192,22 @@ function AdminDashboard() {
 
         {loading ? (
           <p>Loading services...</p>
+        ) : summaries.length === 0 ? (
+          <div className="admin-empty-waitlist">
+            <span className="admin-empty-icon">&#9432;</span>
+            <p>No services are configured yet.</p>
+            <Link
+              to="/admin/services"
+              className="admin-btn admin-btn-secondary admin-btn-sm"
+            >
+              Create a service
+            </Link>
+          </div>
         ) : (
           <div className="admin-services-grid">
             {summaries.map(
               ({ service, waitingCount, estimatedWaitMinutes }) => {
-                const isAvailable =
-                  service.isAvailable !== false;
+                const isAvailable = service.isAvailable;
                 return (
                   <div key={service.id} className="admin-service-card">
                     <div className="admin-service-card-top">
@@ -265,7 +249,6 @@ function AdminDashboard() {
                         <br />
                         <strong>{estimatedWaitMinutes} min</strong>
                       </div>
-
                     </div>
                   </div>
                 );
@@ -318,129 +301,150 @@ function AdminDashboard() {
                 waitingCount,
                 estimatedWaitMinutes,
                 waitingList,
-              }) => (
-                <div key={service.id} className="admin-service-waitlist-card">
-                  <div className="admin-waitlist-header">
-                    <div className="admin-waitlist-service-info">
-                      <span className="admin-waitlist-service-title">
-                        {service.name}
-                      </span>
-                      <span className="admin-badge-count">
-                        {waitingCount} in line
-                      </span>
-                      <span
-                        className={`admin-pill admin-pill-priority-${service.priority}`}
-                      >
-                        {service.priority} priority
-                      </span>
+              }) => {
+                const isServing = servingServiceId === service.id;
+
+                return (
+                  <div key={service.id} className="admin-service-waitlist-card">
+                    <div className="admin-waitlist-header">
+                      <div className="admin-waitlist-service-info">
+                        <span className="admin-waitlist-service-title">
+                          {service.name}
+                        </span>
+                        <span className="admin-badge-count">
+                          {waitingList.length} in line
+                        </span>
+                        <span
+                          className={`admin-pill admin-pill-priority-${service.priority}`}
+                        >
+                          {service.priority} priority
+                        </span>
+                        {!service.isAvailable && (
+                          <span className="admin-pill admin-pill-paused">
+                            Paused
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="admin-waitlist-stats">
+                        <span className="admin-service-est-time">
+                          {isSearching ? "Full queue wait: " : "Total queue wait: "}
+                          <strong>{estimatedWaitMinutes} min</strong>
+                        </span>
+                        <Link
+                          to="/schedule/join-queue"
+                          className="admin-btn admin-btn-secondary admin-btn-sm"
+                        >
+                          + Add to Queue
+                        </Link>
+                      </div>
                     </div>
 
-                    <div className="admin-waitlist-stats">
-                      <span className="admin-service-est-time">
-                        Total queue wait:{" "}
-                        <strong>{estimatedWaitMinutes} min</strong>
-                      </span>
-                      <Link
-                        to="/schedule/join-queue"
-                        className="admin-btn admin-btn-secondary admin-btn-sm"
-                      >
-                        + Add to Queue
-                      </Link>
-                    </div>
-                  </div>
-
-                  {waitingList.length === 0 ? (
-                    <div className="admin-empty-waitlist">
-                      <span className="admin-empty-icon">&#10003;</span>
-                      <p>No customers currently on wait for {service.name}.</p>
-                    </div>
-                  ) : (
-                    <div className="admin-table-wrapper">
-                      <table className="admin-table">
-                        <thead>
-                          <tr>
-                            <th>Position</th>
-                            <th>Ticket #</th>
-                            <th>Customer</th>
-                            <th>Appointment Slot</th>
-                            <th>Joined</th>
-                            <th>Est. Wait</th>
-                            <th>Status</th>
-                            <th>Actions</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {waitingList.map((entry) => (
-                            <tr key={entry.id}>
-                              <td>
-                                <span className="admin-pos-badge">
-                                  #{entry.position}
-                                </span>
-                              </td>
-                              <td>
-                                <span className="admin-ticket-tag">
-                                  {entry.ticketNumber || `T-${entry.position}`}
-                                </span>
-                              </td>
-                              <td>
-                                <div className="admin-customer-cell">
-                                  <span className="admin-customer-name">
-                                    {entry.customerName || "Anonymous Customer"}
-                                  </span>
-                                  {entry.customerEmail && (
-                                    <span className="admin-customer-email">
-                                      {entry.customerEmail}
-                                    </span>
-                                  )}
-                                </div>
-                              </td>
-                              <td>{entry.timeSlot || "Walk-in / Immediate"}</td>
-                              <td>
-                                {new Date(entry.joinedAt).toLocaleTimeString(
-                                  [],
-                                  {
-                                    hour: "2-digit",
-                                    minute: "2-digit",
-                                  },
-                                )}
-                              </td>
-                              <td>
-                                <strong>
-                                  {entry.estimatedWaitMinutes} min
-                                </strong>
-                              </td>
-                              <td>
-                                <span
-                                  className={`admin-status-pill admin-status-${entry.status}`}
-                                >
-                                  {entry.status.replace("_", " ")}
-                                </span>
-                              </td>
-                              <td>
-                                <button
-                                  type="button"
-                                  className="admin-btn admin-btn-sm admin-btn-primary"
-                                  onClick={() =>
-                                    handleServeNext(service.id, service.name)
-                                  }
-                                  disabled={entry.position !== 1}
-                                  title={
-                                    entry.position === 1
-                                      ? "Serve the next person in this queue"
-                                      : "Only the next person can be served"
-                                  }
-                                >
-                                  Serve Next
-                                </button>
-                              </td>
+                    {waitingList.length === 0 ? (
+                      <div className="admin-empty-waitlist">
+                        <span className="admin-empty-icon">&#10003;</span>
+                        <p>
+                          {isSearching
+                            ? `No customers match "${searchTerm.trim()}".`
+                            : `No customers currently on wait for ${service.name}.`}
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="admin-table-wrapper">
+                        <table className="admin-table">
+                          <thead>
+                            <tr>
+                              <th>Position</th>
+                              <th>Ticket #</th>
+                              <th>Customer</th>
+                              <th>Appointment Slot</th>
+                              <th>Joined</th>
+                              <th>Est. Wait</th>
+                              <th>Status</th>
+                              <th>Actions</th>
                             </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
-                </div>
-              ),
+                          </thead>
+                          <tbody>
+                            {waitingList.map((entry) => (
+                              <tr key={entry.id}>
+                                <td>
+                                  <span className="admin-pos-badge">
+                                    #{entry.position}
+                                  </span>
+                                </td>
+                                <td>
+                                  <span className="admin-ticket-tag">
+                                    {entry.ticketNumber || `T-${entry.position}`}
+                                  </span>
+                                </td>
+                                <td>
+                                  <div className="admin-customer-cell">
+                                    <span className="admin-customer-name">
+                                      {entry.customerName || "Anonymous Customer"}
+                                    </span>
+                                    {entry.customerEmail && (
+                                      <span className="admin-customer-email">
+                                        {entry.customerEmail}
+                                      </span>
+                                    )}
+                                  </div>
+                                </td>
+                                <td>{entry.timeSlot || "Walk-in / Immediate"}</td>
+                                <td>
+                                  {new Date(entry.joinedAt).toLocaleTimeString(
+                                    [],
+                                    {
+                                      hour: "2-digit",
+                                      minute: "2-digit",
+                                    },
+                                  )}
+                                </td>
+                                <td>
+                                  <strong>
+                                    {entry.estimatedWaitMinutes} min
+                                  </strong>
+                                </td>
+                                <td>
+                                  <span
+                                    className={`admin-status-pill admin-status-${entry.status}`}
+                                  >
+                                    {entry.status.replace("_", " ")}
+                                  </span>
+                                </td>
+                                <td>
+                                  <button
+                                    type="button"
+                                    className="admin-btn admin-btn-sm admin-btn-primary"
+                                    onClick={() =>
+                                      handleServeNext(service.id, service.name)
+                                    }
+                                    disabled={
+                                      entry.position !== 1 || isServing
+                                    }
+                                    title={
+                                      entry.position === 1
+                                        ? "Serve the next person in this queue"
+                                        : "Only the next person can be served"
+                                    }
+                                  >
+                                    {isServing ? "Serving..." : "Serve Next"}
+                                  </button>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+
+                    {waitingCount !== waitingList.length && (
+                      <p className="admin-waitlist-note">
+                        Showing {waitingList.length} of {waitingCount} customers.
+                      </p>
+                    )}
+                  </div>
+                );
+              },
             )}
           </div>
         )}

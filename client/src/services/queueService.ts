@@ -6,6 +6,7 @@ import type {
   WaitEstimate,
 } from "../types/queue";
 import { getStoredAccessToken } from "./authService";
+import { AuthError } from "./authError";
 import { getServices as getManagedServices } from "./serviceApi";
 
 const API_BASE_URL = (
@@ -27,6 +28,17 @@ interface ApiErrorPayload {
   fieldErrors?: Record<string, unknown>;
 }
 
+function readFieldErrors(value: unknown): Record<string, string> {
+  if (typeof value !== "object" || value === null) return {};
+
+  const fieldErrors: Record<string, string> = {};
+  for (const [key, entry] of Object.entries(value)) {
+    if (typeof entry === "string") fieldErrors[key] = entry;
+  }
+
+  return fieldErrors;
+}
+
 async function request<T>(
   baseUrl: string,
   path: string,
@@ -42,17 +54,20 @@ async function request<T>(
   try {
     response = await fetch(`${baseUrl}${path}`, { ...init, headers });
   } catch {
-    throw new Error("Unable to reach the server. Please try again.");
+    throw new AuthError("Unable to reach the server. Please try again.", 0);
   }
+
+  if (response.status === 204) return undefined as T;
 
   let payload: unknown;
   try {
     payload = await response.json();
   } catch {
-    throw new Error(
+    throw new AuthError(
       response.ok
         ? "The server returned an invalid response."
         : `The request failed with status ${response.status}.`,
+      response.status,
     );
   }
 
@@ -65,11 +80,16 @@ async function request<T>(
       typeof error.message === "string" && error.message.trim()
         ? error.message
         : `The request failed with status ${response.status}.`;
-    const details = Object.entries(error.fieldErrors ?? {})
-      .filter(([, value]) => typeof value === "string")
+    const fieldErrors = readFieldErrors(error.fieldErrors);
+    const details = Object.entries(fieldErrors)
       .map(([field, value]) => `${field}: ${value}`)
       .join(" ");
-    throw new Error(details ? `${message} ${details}` : message);
+
+    throw new AuthError(
+      details ? `${message} ${details}` : message,
+      response.status,
+      fieldErrors,
+    );
   }
 
   return payload as T;
@@ -83,7 +103,7 @@ export async function getServices(): Promise<Service[]> {
     description: service.description,
     expectedDuration: service.duration,
     priority: service.priority,
-    isAvailable: true,
+    isAvailable: service.isAvailable,
   }));
 }
 

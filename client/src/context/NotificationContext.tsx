@@ -29,11 +29,15 @@ export function NotificationProvider({
   const { isAuthenticated, isInitializing } = useAuth();
 
   const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [wasAuthenticated, setWasAuthenticated] = useState(isAuthenticated);
 
+  if (wasAuthenticated !== isAuthenticated) {
+    setWasAuthenticated(isAuthenticated);
+    setNotifications([]);
+  }
 
   useEffect(() => {
     if (!isAuthenticated || isInitializing) {
-      setNotifications([]);
       return;
     }
 
