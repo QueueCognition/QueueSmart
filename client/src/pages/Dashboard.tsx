@@ -1,12 +1,10 @@
 import { useNotifications } from "../context/NotificationContext";
 import { useQueueStatus } from "../hooks/useQueueStatus";
 import { useEffect, useState } from "react";
-import { getAppointments } from "../services/appointmentService";
-import { mockServices, type MockAppointment } from "../services/mockData";
 import "../styles/dashboard.css";
 import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { getQueueHistory, getServices} from "../services/queueService"; 
+import { getMyQueue, getQueueHistory, getServices } from "../services/queueService"; 
 import type { QueueEntry, Service } from "../types/queue";
 
 function Dashboard() {
@@ -14,18 +12,11 @@ function Dashboard() {
   const { notifications, markRead } = useNotifications();
   const { entry, error: queueError, loading: queueLoading } = useQueueStatus();
 
-  const [appointments, setAppointments] = useState<MockAppointment[]>([]);
   const [queueHistory, setQueueHistory] = useState<QueueEntry[]>([]);
+  const [myQueue, setMyQueue] = useState<QueueEntry[]>([]);
   const [historyLoading, setHistoryLoading] = useState(true);
   const [historyError, setHistoryError] = useState("");
   const [services, setServices] = useState<Service[]>([]);
-
-  useEffect(() => {
-    if (!user) return;
-
-    getAppointments(user.id).then(setAppointments);
-  }, [user]);
-
 
   useEffect(() => {
     if (!user) return;
@@ -34,9 +25,13 @@ function Dashboard() {
 
     async function loadQueueHistory() {
       try {
-        const history = await getQueueHistory();
+        const [activeEntries, history] = await Promise.all([
+          getMyQueue(),
+          getQueueHistory(),
+        ]);
 
         if (active) {
+          setMyQueue(activeEntries);
           setQueueHistory(history);
           setHistoryError("");
         }
@@ -84,15 +79,16 @@ function Dashboard() {
 
   const todayString = new Date().toISOString().split("T")[0];
 
-  const upcomingAppointments = appointments
+  const upcomingAppointments = myQueue
     .filter(
-      (appointment) =>
-        appointment.date >= todayString &&
-        appointment.status === "upcoming",
+      (entry) =>
+        entry.date &&
+        entry.date >= todayString &&
+        (entry.status === "waiting" || entry.status === "almost_ready"),
     )
     .sort((a, b) => {
-      return `${a.date} ${a.time}`.localeCompare(
-        `${b.date} ${b.time}`,
+      return `${a.date} ${a.timeSlot ?? ""}`.localeCompare(
+        `${b.date} ${b.timeSlot ?? ""}`,
       );
     });
 
@@ -135,19 +131,25 @@ function Dashboard() {
         <section className="dashboard-card">
           <h2>Upcoming Appointments</h2>
           <ul className="dashboard-services">
-            {upcomingAppointments.length === 0 ? (
+            {historyLoading ? (
+              <li>Loading upcoming appointments...</li>
+            ) : historyError ? (
+              <li role="alert">{historyError}</li>
+            ) : upcomingAppointments.length === 0 ? (
               <li>No upcoming appointments.</li>
             ) : (
               upcomingAppointments.map((appointment) => {
-                const service = mockServices.find(
+                const service = services.find(
                   (service) => service.id === appointment.serviceId,
                 );
 
                 return (
                   <li key={appointment.id}>
-                    <strong>{service?.name}</strong>
+                    <strong>
+                      {service?.name ?? `Service ${appointment.serviceId}`}
+                    </strong>
                     <br />
-                    {appointment.date} at {appointment.time}
+                    {appointment.date} at {appointment.timeSlot}
                   </li>
                 );
               })
