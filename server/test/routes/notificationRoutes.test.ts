@@ -1,3 +1,4 @@
+import { createNotification } from "../../src/services/notificationService";
 import assert from "node:assert/strict";
 import { before, beforeEach, describe, it } from "node:test";
 import express from "express";
@@ -187,5 +188,72 @@ describe("GET /api/notifications", () => {
         notification.message.includes("next to be served"),
       ),
     );
+  });
+});
+
+describe("PATCH /api/notifications/:notificationId/read", () => {
+  it("marks the user's notification as read", async () => {
+    const notification = createNotification(
+      "user-a",
+      "Your appointment is ready."
+    );
+
+    const res = await request(app)
+      .patch(`/api/notifications/${notification.id}/read`)
+      .set(actingAs("user-a"));
+
+    assert.equal(res.status, 200);
+    assert.equal(res.body.id, notification.id);
+    assert.equal(res.body.read, true);
+  });
+
+  it("does not let a user mark another user's notification as read", async () => {
+  const notification = createNotification(
+    "user-a",
+    "Your appointment is ready."
+  );
+
+  const res = await request(app)
+    .patch(`/api/notifications/${notification.id}/read`)
+    .set(actingAs("user-b"));
+
+  assert.equal(res.status, 404);
+});
+});
+
+describe("PATCH /api/notifications/read", () => {
+  it("marks all of the logged-in user's notifications as read", async () => {
+    createNotification("user-a", "Your appointment is ready.");
+    createNotification("user-a", "You joined the queue.");
+    createNotification("user-b", "Your appointment is ready.");
+
+    const res = await request(app)
+      .patch("/api/notifications/read")
+      .set(actingAs("user-a"));
+
+    assert.equal(res.status, 204);
+
+    const userARes = await request(app)
+      .get("/api/notifications")
+      .set(actingAs("user-a"));
+
+    const userBRes = await request(app)
+      .get("/api/notifications")
+      .set(actingAs("user-b"));
+
+    assert.equal(userARes.status, 200);
+    assert.equal(userBRes.status, 200);
+
+    assert.ok(userARes.body.every(
+      (notification: { read: boolean }) => notification.read === true
+    ));
+
+    assert.equal(userBRes.body[0].read, false);
+  });
+
+  it("returns 401 when the caller is not authenticated", async () => {
+    const res = await request(app).patch("/api/notifications/read");
+
+    assert.equal(res.status, 401);
   });
 });
