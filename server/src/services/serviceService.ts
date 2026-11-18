@@ -1,6 +1,7 @@
 import type { DatabaseSync } from "node:sqlite";
 import { db } from "../db/sqlite";
 import type { Priority, Service } from "../models/service";
+import { ValidationError } from "../utils/errors";
 import {
   validateServiceInput,
   type ServiceInput,
@@ -17,7 +18,7 @@ type ServiceRow = {
 
 function toService(row: ServiceRow): Service {
   return {
-    id: Number(row.id),
+    id: row.id,
     name: row.name,
     description: row.description,
     duration: row.expected_duration,
@@ -34,7 +35,7 @@ export class ServiceService {
       .prepare(
         `SELECT id, name, description, expected_duration, priority, is_available
          FROM services
-         ORDER BY CAST(id AS INTEGER)`,
+         ORDER BY CAST(id AS INTEGER) = 0, CAST(id AS INTEGER), id`,
       )
       .all() as ServiceRow[];
 
@@ -42,12 +43,7 @@ export class ServiceService {
   }
 
   createService(input: unknown): Service {
-    const result = validateServiceInput(input);
-    if (!result.valid) {
-      throw new Error(result.errors.join(" "));
-    }
-
-    const data = input as ServiceInput;
+    const data = this.validate(input);
 
     const row = this.database
       .prepare(
@@ -57,7 +53,7 @@ export class ServiceService {
       .get() as { next_id: number };
 
     const service: Service = {
-      id: row.next_id,
+      id: String(row.next_id),
       name: data.name.trim(),
       description: data.description.trim(),
       duration: data.duration,
@@ -72,7 +68,7 @@ export class ServiceService {
          VALUES (?, ?, ?, ?, ?)`,
       )
       .run(
-        String(service.id),
+        service.id,
         service.name,
         service.description,
         service.duration,
@@ -82,21 +78,16 @@ export class ServiceService {
     return service;
   }
 
-  updateService(id: number, input: unknown): Service | undefined {
+  updateService(id: string, input: unknown): Service | undefined {
     const existing = this.database
       .prepare("SELECT is_available FROM services WHERE id = ?")
-      .get(String(id)) as { is_available: number } | undefined;
+      .get(id) as { is_available: number } | undefined;
 
     if (!existing) {
       return undefined;
     }
 
-    const result = validateServiceInput(input);
-    if (!result.valid) {
-      throw new Error(result.errors.join(" "));
-    }
-
-    const data = input as ServiceInput;
+    const data = this.validate(input);
 
     this.database
       .prepare(
@@ -109,7 +100,7 @@ export class ServiceService {
         data.description.trim(),
         data.duration,
         data.priority,
-        String(id),
+        id,
       );
 
     return {
@@ -122,10 +113,10 @@ export class ServiceService {
     };
   }
 
-  setAvailability(id: number, isAvailable: boolean): Service | undefined {
+  setAvailability(id: string, isAvailable: boolean): Service | undefined {
     const result = this.database
       .prepare("UPDATE services SET is_available = ? WHERE id = ?")
-      .run(isAvailable ? 1 : 0, String(id));
+      .run(isAvailable ? 1 : 0, id);
 
     if (result.changes === 0) {
       return undefined;
@@ -137,16 +128,26 @@ export class ServiceService {
          FROM services
          WHERE id = ?`,
       )
-      .get(String(id)) as ServiceRow | undefined;
+      .get(id) as ServiceRow | undefined;
 
     return row ? toService(row) : undefined;
   }
 
-  removeService(id: number): boolean {
+  removeService(id: string): boolean {
     const result = this.database
       .prepare("DELETE FROM services WHERE id = ?")
-      .run(String(id));
+      .run(id);
 
     return result.changes > 0;
+  }
+
+  private validate(input: unknown): ServiceInput {
+    const result = validateServiceInput(input);
+
+    if (!result.valid) {
+      throw new ValidationError({}, result.errors.join(" "));
+    }
+
+    return input as ServiceInput;
   }
 }

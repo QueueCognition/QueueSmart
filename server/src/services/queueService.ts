@@ -73,11 +73,8 @@ export class QueueService {
   }
 
   private async requireService(serviceId: string): Promise<Service> {
-    // Ensure string comparison matching regardless of spacing or type formatting
     const resolvedCatalog = await this.catalog.list();
-    const match = resolvedCatalog.find(
-      (s) => String(s.id) === String(serviceId).trim(),
-    );
+    const match = resolvedCatalog.find((s) => s.id === serviceId);
 
     if (!match) {
       throw new HttpError(404, "Service not found");
@@ -96,9 +93,7 @@ export class QueueService {
     serviceId: string,
   ): QueueEntryRecord[] {
     return entries
-      .filter(
-        (e) => String(e.serviceId) === String(serviceId).trim() && isActive(e),
-      )
+      .filter((e) => e.serviceId === serviceId && isActive(e))
       .sort(compareEntries);
   }
 

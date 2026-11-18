@@ -5,7 +5,7 @@ import type { ServiceService } from "./serviceService";
 
 function toQueueService(service: ManagedService): Service {
   return {
-    id: String(service.id),
+    id: service.id,
     name: service.name,
     description: service.description,
     expectedDuration: service.duration,
@@ -22,7 +22,7 @@ export function createQueueCatalog(
     find: (serviceId) => {
       const match = serviceService
         .listServices()
-        .find((service) => String(service.id) === serviceId);
+        .find((service) => service.id === serviceId);
       return match ? toQueueService(match) : undefined;
     },
   };

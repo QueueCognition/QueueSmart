@@ -15,7 +15,7 @@ function ServiceManagement() {
   const [loading, setLoading] = useState(true);
   const [apiError, setApiError] = useState("");
   const [saving, setSaving] = useState(false);
-  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
@@ -166,7 +166,7 @@ function ServiceManagement() {
     }
   };
 
-  const handleRemove = async (id: number) => {
+  const handleRemove = async (id: string) => {
     if (saving) {
       return;
     }

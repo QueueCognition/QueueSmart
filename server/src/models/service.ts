@@ -13,7 +13,7 @@ export function isPriority(value: unknown): value is Priority {
 }
 
 export interface Service {
-  id: number;
+  id: string;
   name: string;
   description: string;
   duration: number;

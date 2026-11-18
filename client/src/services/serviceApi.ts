@@ -3,7 +3,7 @@ import { API_BASE_URL, getStoredAccessToken } from "./authService";
 export type Priority = "low" | "medium" | "high";
 
 export type Service = {
-  id: number;
+  id: string;
   name: string;
   description: string;
   duration: number;
@@ -12,9 +12,10 @@ export type Service = {
 };
 
 type ApiResponse<T> = {
-  success: boolean;
+  success?: boolean;
   data?: T;
-  errors?: string[];
+  message?: string;
+  fieldErrors?: Record<string, string>;
 };
 
 const API_URL = `${API_BASE_URL.replace(/\/$/, "")}/services`;
@@ -33,8 +34,8 @@ async function request<T>(url: string, options?: RequestInit): Promise<T> {
 
   const result = (await response.json()) as ApiResponse<T>;
 
-  if (!response.ok || !result.success) {
-    throw new Error(result.errors?.join(" ") || "Something went wrong.");
+  if (!response.ok) {
+    throw new Error(result.message || "Something went wrong.");
   }
 
   return result.data as T;
@@ -54,7 +55,7 @@ export function createService(
 }
 
 export function updateService(
-  id: number,
+  id: string,
   service: Omit<Service, "id" | "isAvailable">,
 ): Promise<Service> {
   return request<Service>(`${API_URL}/${id}`, {
@@ -64,7 +65,7 @@ export function updateService(
 }
 
 export function setServiceAvailability(
-  id: number,
+  id: string,
   isAvailable: boolean,
 ): Promise<Service> {
   return request<Service>(`${API_URL}/${id}/availability`, {
@@ -73,7 +74,7 @@ export function setServiceAvailability(
   });
 }
 
-export function deleteService(id: number): Promise<{ message: string }> {
+export function deleteService(id: string): Promise<{ message: string }> {
   return request<{ message: string }>(`${API_URL}/${id}`, {
     method: "DELETE",
   });

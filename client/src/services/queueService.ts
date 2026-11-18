@@ -99,7 +99,7 @@ async function request<T>(
 export async function getServices(): Promise<Service[]> {
   const services = await getManagedServices();
   return services.map((service) => ({
-    id: String(service.id),
+    id: service.id,
     name: service.name,
     description: service.description,
     expectedDuration: service.duration,
