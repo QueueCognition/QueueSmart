@@ -27,9 +27,6 @@ function Calendar() {
           getQueueHistory(),
         ]);
 
-        console.log("Active queue:", activeEntries);
-        console.log("Queue history:", historyEntries);
-
         if (active) {
           setMyQueue(activeEntries);
           setHistory(historyEntries);

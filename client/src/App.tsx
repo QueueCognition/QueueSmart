@@ -14,7 +14,6 @@ import Calendar from "./pages/Calendar";
 import Profile from "./pages/Profile";
 import AdminDashboard from "./pages/AdminDashboard";
 import ProtectedRoute from "./components/ProtectedRoute";
-import NotificationTester from "./components/NotificationTester";
 import QueueManagement from "./pages/QueueManagement";
 import ServiceManagement from "./pages/ServiceManagement";
 
@@ -27,7 +26,6 @@ function App() {
             <Navbar />
             <NotificationBell />
           </div>
-          <NotificationTester />
 
           <Routes>
             <Route path="/" element={<Home />} />
