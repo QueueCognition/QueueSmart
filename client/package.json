@@ -14,6 +14,9 @@
     "format": "prettier --write \"src/**/*.{ts,tsx,css}\"",
     "format:check": "prettier --check \"src/**/*.{ts,tsx,css}\""
   },
+  "engines": {
+    "node": ">=22.22.2"
+  },
   "dependencies": {
     "@headlessui/react": "^2.2.10",
     "@hookform/resolvers": "^7.0.7",
