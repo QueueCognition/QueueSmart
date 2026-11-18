@@ -11,7 +11,7 @@
     "start": "node dist/index.js",
     "test": "node --env-file=test/test.env --import tsx --test \"test/**/*.ts\"",
     "test:watch": "node --env-file=test/test.env --import tsx --test --watch \"test/**/*.ts\"",
-    "test:coverage": "node --env-file=test/test.env --import tsx --experimental-test-coverage --test-coverage-include=\"src/**\" --test \"test/**/*.ts\"",
+    "test:coverage": "node --env-file=test/test.env --import tsx --experimental-test-coverage --test-coverage-include=\"src/**\" --test-coverage-lines=95 --test-coverage-branches=90 --test-coverage-functions=95 --test \"test/**/*.ts\"",
     "test:coverage:unit": "node --env-file=test/test.env --import tsx --experimental-test-coverage --test-coverage-include=\"src/**/{queue*,waitTime,maskName,currentUser,requireStaff}.ts\" --test \"test/**/*.ts\"",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "lint": "eslint .",

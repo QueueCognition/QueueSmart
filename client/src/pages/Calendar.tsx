@@ -1,7 +1,11 @@
 import { useEffect, useState } from "react";
 import "../styles/calendar.css";
 import { useAuth } from "../context/AuthContext";
-import { getMyQueue, getQueueHistory, getServices } from "../services/queueService";
+import {
+  getMyQueue,
+  getQueueHistory,
+  getServices,
+} from "../services/queueService";
 import type { QueueEntry, Service } from "../types/queue";
 
 function Calendar() {

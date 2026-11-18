@@ -163,9 +163,11 @@ describe("joining a queue", () => {
       queueStatuses.map(({ status }) => status),
       ["closed", "open"],
     );
-    assert.equal(
-      new QueueService(catalog).getHistoryForUser("user-1").length,
-      2,
+
+    const history = new QueueService(catalog).getHistoryForUser("user-1");
+    assert.deepEqual(
+      history.map(({ id, status }) => ({ id, status })),
+      [{ id: entry.id, status: "cancelled" }],
     );
   });
 });
