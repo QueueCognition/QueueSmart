@@ -45,7 +45,7 @@ describe("Service Management", () => {
       const serviceService = new ServiceService(database);
       const service = serviceService.createService(validService);
 
-      assert.equal(service.id, 1);
+      assert.equal(service.id, "1");
       assert.equal(service.name, "Passport Services");
       assert.equal(service.priority, "high");
       assert.equal(serviceService.listServices().length, 1);
@@ -111,7 +111,10 @@ describe("Service Management", () => {
     try {
       const serviceService = new ServiceService(database);
 
-      assert.equal(serviceService.updateService(999, validService), undefined);
+      assert.equal(
+        serviceService.updateService("999", validService),
+        undefined,
+      );
     } finally {
       database.close();
     }
@@ -135,7 +138,7 @@ describe("Service Management", () => {
     try {
       const serviceService = new ServiceService(database);
 
-      assert.equal(serviceService.removeService(999), false);
+      assert.equal(serviceService.removeService("999"), false);
     } finally {
       database.close();
     }
@@ -179,7 +182,7 @@ describe("Service Management", () => {
     try {
       const serviceService = new ServiceService(database);
 
-      assert.equal(serviceService.setAvailability(999, false), undefined);
+      assert.equal(serviceService.setAvailability("999", false), undefined);
     } finally {
       database.close();
     }
@@ -255,5 +258,116 @@ describe("Service Management", () => {
 
     assert.equal(result.valid, false);
     assert.ok(result.errors.includes("Priority must be low, medium, or high."));
+  });
+});
+
+describe("Service identifiers", () => {
+  function seedCustomId(database: DatabaseSync, id: string): void {
+    database
+      .prepare(
+        `INSERT INTO services (id, name, description, expected_duration, priority)
+         VALUES (?, ?, ?, ?, ?)`,
+      )
+      .run(id, "Legacy Service", "Imported row.", 15, "low");
+  }
+
+  it("exposes ids as strings to match the TEXT primary key", () => {
+    const database = createTestDatabase();
+    try {
+      const created = new ServiceService(database).createService(validService);
+
+      assert.equal(typeof created.id, "string");
+      assert.equal(created.id, "1");
+    } finally {
+      database.close();
+    }
+  });
+
+  it("keeps non-numeric ids intact instead of turning them into NaN", () => {
+    const database = createTestDatabase();
+    try {
+      seedCustomId(database, "svc-passport");
+
+      const listed = new ServiceService(database).listServices();
+
+      assert.deepEqual(
+        listed.map((service) => service.id),
+        ["svc-passport"],
+      );
+      assert.ok(!listed.some((service) => String(service.id) === "NaN"));
+    } finally {
+      database.close();
+    }
+  });
+
+  it("finds, updates and removes a non-numeric id", () => {
+    const database = createTestDatabase();
+    try {
+      const serviceService = new ServiceService(database);
+      seedCustomId(database, "svc-passport");
+
+      const updated = serviceService.updateService("svc-passport", {
+        name: "Renamed Service",
+        description: "Renamed.",
+        duration: 20,
+        priority: "medium",
+      });
+
+      assert.equal(updated?.id, "svc-passport");
+      assert.equal(updated?.name, "Renamed Service");
+
+      assert.equal(
+        serviceService.setAvailability("svc-passport", false)?.isAvailable,
+        false,
+      );
+      assert.equal(serviceService.removeService("svc-passport"), true);
+    } finally {
+      database.close();
+    }
+  });
+
+  it("sorts numeric ids before non-numeric ids", () => {
+    const database = createTestDatabase();
+    try {
+      for (const id of ["s9", "10", "1", "abc", "2", "3"]) {
+        seedCustomId(database, id);
+      }
+
+      const listed = new ServiceService(database).listServices();
+
+      assert.deepEqual(
+        listed.map((service) => service.id),
+        ["1", "2", "3", "10", "abc", "s9"],
+      );
+    } finally {
+      database.close();
+    }
+  });
+
+  it("orders services 1, 2, 10 numerically rather than as text", () => {
+    const database = createTestDatabase();
+    try {
+      const serviceService = new ServiceService(database);
+      for (let index = 0; index < 10; index += 1) {
+        serviceService.createService(validService);
+      }
+
+      const ids = serviceService.listServices().map((service) => service.id);
+
+      assert.deepEqual(ids, [
+        "1",
+        "2",
+        "3",
+        "4",
+        "5",
+        "6",
+        "7",
+        "8",
+        "9",
+        "10",
+      ]);
+    } finally {
+      database.close();
+    }
   });
 });

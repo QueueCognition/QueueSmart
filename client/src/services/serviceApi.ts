@@ -3,7 +3,7 @@ import { apiDelete, apiGet, apiPatch, apiPost, apiPut } from "./apiClient";
 export type Priority = "low" | "medium" | "high";
 
 export type Service = {
-  id: number;
+  id: string;
   name: string;
   description: string;
   duration: number;
@@ -12,16 +12,17 @@ export type Service = {
 };
 
 type ApiEnvelope<T> = {
-  success: boolean;
+  success?: boolean;
   data?: T;
-  errors?: string[];
+  message?: string;
+  fieldErrors?: Record<string, string>;
 };
 
 const SERVICE_PATH = "services";
 
 function unwrap<T>(envelope: ApiEnvelope<T>): T {
-  if (!envelope.success) {
-    throw new Error(envelope.errors?.join(" ") || "Something went wrong.");
+  if (envelope.success === false) {
+    throw new Error(envelope.message || "Something went wrong.");
   }
 
   return envelope.data as T;
@@ -43,7 +44,7 @@ export async function createService(
 }
 
 export async function updateService(
-  id: number,
+  id: string,
   service: Omit<Service, "id" | "isAvailable">,
 ): Promise<Service> {
   return unwrap(
@@ -55,7 +56,7 @@ export async function updateService(
 }
 
 export async function setServiceAvailability(
-  id: number,
+  id: string,
   isAvailable: boolean,
 ): Promise<Service> {
   return unwrap(
@@ -66,7 +67,7 @@ export async function setServiceAvailability(
   );
 }
 
-export async function deleteService(id: number): Promise<{ message: string }> {
+export async function deleteService(id: string): Promise<{ message: string }> {
   return unwrap(
     await apiDelete<ApiEnvelope<{ message: string }>>(`${SERVICE_PATH}/${id}`, {
       retry: 0,

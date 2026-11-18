@@ -32,4 +32,24 @@ describe("verifyPassword", () => {
     assert.equal(verifyPassword("password123", "salthash"), false);
     assert.equal(verifyPassword("password123", "salt:"), false);
   });
+
+  it("rejects digests that are not valid hex", () => {
+    assert.equal(verifyPassword("password123", `${"a".repeat(32)}:zz`), false);
+    assert.equal(verifyPassword("password123", `${"a".repeat(32)}: `), false);
+  });
+
+  it("rejects salts that are not valid hex", () => {
+    assert.equal(verifyPassword("password123", `gg:${"0".repeat(128)}`), false);
+  });
+
+  it("rejects digests of the wrong length", () => {
+    assert.equal(verifyPassword("password123", `${"a".repeat(32)}:00`), false);
+    assert.equal(verifyPassword("password123", `${"a".repeat(32)}:`), false);
+  });
+
+  it("rejects values with extra separators", () => {
+    const valid = hashPassword("password123");
+
+    assert.equal(verifyPassword("password123", `${valid}:extra`), false);
+  });
 });

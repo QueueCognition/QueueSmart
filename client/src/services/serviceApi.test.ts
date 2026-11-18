@@ -3,7 +3,7 @@ import * as serviceApi from "../services/serviceApi";
 import { jsonResponse, mockFetch } from "../test/fetchMock";
 
 const SERVICE = {
-  id: 3,
+  id: "3",
   name: "Dentist",
   description: "Checkup",
   duration: 30,
@@ -31,17 +31,15 @@ describe("serviceApi", () => {
   });
 
   it("throws when a 200 response reports success: false", async () => {
-    mockFetch(() =>
-      jsonResponse({ success: false, errors: ["Nope", "Also nope"] }),
-    );
+    mockFetch(() => jsonResponse({ success: false, message: "Nope" }));
 
-    await expect(serviceApi.getServices()).rejects.toThrow("Nope Also nope");
+    await expect(serviceApi.getServices()).rejects.toThrow("Nope");
   });
 
-  it("throws a joined message on a non-ok status", async () => {
-    mockFetch(() => jsonResponse({ success: false, errors: ["Bad id"] }, 400));
+  it("propagates the message from a failed request", async () => {
+    mockFetch(() => jsonResponse({ message: "Bad id" }, 400));
 
-    await expect(serviceApi.deleteService(9)).rejects.toThrow("Bad id");
+    await expect(serviceApi.deleteService("9")).rejects.toThrow("Bad id");
   });
 
   it("sends availability patches to the nested route", async () => {
@@ -49,7 +47,7 @@ describe("serviceApi", () => {
       jsonResponse({ success: true, data: { ...SERVICE, isAvailable: false } }),
     );
 
-    await serviceApi.setServiceAvailability(3, false);
+    await serviceApi.setServiceAvailability("3", false);
 
     expect(calls[0].url).toMatch(/\/services\/3\/availability$/);
     expect(calls[0].method).toBe("PATCH");

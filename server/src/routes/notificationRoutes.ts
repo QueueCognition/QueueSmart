@@ -6,6 +6,8 @@ import {
   markAllNotificationsAsRead,
 } from "../services/notificationService";
 import { currentUser } from "../utils/currentUser";
+import { HttpError } from "../utils/errors";
+import { routeParam } from "../utils/routeParam";
 
 export function createNotificationRoutes() {
   const router = Router();
@@ -27,18 +29,13 @@ export function createNotificationRoutes() {
 
   router.patch("/:notificationId/read", requireAuth, (req, res) => {
     const user = currentUser(res);
+    const notification = markNotificationAsRead(
+      user.id,
+      routeParam(req, "notificationId"),
+    );
 
-    const notificationId = req.params.notificationId;
-
-    if (typeof notificationId !== "string") {
-      res.status(400).json({ message: "Invalid notification ID" });
-      return;
-    }
-
-    const notification = markNotificationAsRead(user.id, notificationId);
     if (!notification) {
-      res.status(404).json({ message: "Notification not found" });
-      return;
+      throw new HttpError(404, "Notification not found");
     }
 
     res.json(notification);

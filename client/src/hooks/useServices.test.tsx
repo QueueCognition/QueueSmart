@@ -7,7 +7,7 @@ import { mockFetch, jsonResponse } from "../test/fetchMock";
 import { queryKeys } from "../lib/queryClient";
 
 const SERVICE_ROW = {
-  id: 1,
+  id: "1",
   name: "Dentist",
   description: "Checkup",
   duration: 30,

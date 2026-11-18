@@ -281,3 +281,49 @@ describe("PATCH /api/services/:id/availability", () => {
     assert.equal(response.status, 400);
   });
 });
+
+describe("Service API error format", () => {
+  it("reports validation failures as message and fieldErrors", async () => {
+    const response = await request(app)
+      .post("/api/services")
+      .set(actingAs("service-admin", "admin"))
+      .send({ ...serviceBody(), duration: -5 });
+
+    assert.equal(response.status, 400);
+    assert.equal(response.body.message, "Duration must be a positive number.");
+    assert.equal(response.body.success, undefined);
+    assert.equal(response.body.errors, undefined);
+  });
+
+  it("reports an invalid id as message and fieldErrors", async () => {
+    const response = await request(app)
+      .delete("/api/services/abc")
+      .set(actingAs("service-admin", "admin"));
+
+    assert.equal(response.status, 400);
+    assert.equal(
+      response.body.message,
+      "Service ID must be a positive integer.",
+    );
+    assert.deepEqual(response.body.fieldErrors, {
+      id: "Service ID must be a positive integer.",
+    });
+  });
+
+  it("reports a missing service as message only", async () => {
+    const response = await request(app)
+      .delete("/api/services/999")
+      .set(actingAs("service-admin", "admin"));
+
+    assert.equal(response.status, 404);
+    assert.equal(response.body.message, "Service not found.");
+  });
+
+  it("keeps the success envelope unchanged", async () => {
+    const response = await request(app).get("/api/services");
+
+    assert.equal(response.status, 200);
+    assert.equal(response.body.success, true);
+    assert.deepEqual(response.body.data, []);
+  });
+});

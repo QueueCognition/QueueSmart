@@ -32,3 +32,26 @@ export function openDatabase(url: string): DatabaseSync {
 }
 
 export const db = openDatabase(config.databaseUrl);
+
+const transactionDepths = new WeakMap<DatabaseSync, number>();
+
+export function transaction<T>(run: () => T, database: DatabaseSync = db): T {
+  const depth = transactionDepths.get(database) ?? 0;
+  const nested = depth > 0;
+  const savepoint = `sp_${depth}`;
+
+  database.exec(nested ? `SAVEPOINT ${savepoint}` : "BEGIN IMMEDIATE");
+  transactionDepths.set(database, depth + 1);
+
+  try {
+    const result = run();
+    database.exec(nested ? `RELEASE ${savepoint}` : "COMMIT");
+    return result;
+  } catch (error) {
+    database.exec(nested ? `ROLLBACK TO ${savepoint}` : "ROLLBACK");
+    if (nested) database.exec(`RELEASE ${savepoint}`);
+    throw error;
+  } finally {
+    transactionDepths.set(database, depth);
+  }
+}

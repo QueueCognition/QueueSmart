@@ -1,7 +1,21 @@
 import type { Request, Response } from "express";
 import { ServiceService } from "../services/serviceService";
+import { HttpError, ValidationError } from "../utils/errors";
+import { routeParam } from "../utils/routeParam";
+
+const INVALID_ID = "Service ID must be a positive integer.";
 
 export function createServiceController(serviceService: ServiceService) {
+  function readServiceId(req: Request): string {
+    const id = routeParam(req, "id");
+
+    if (!/^\d+$/.test(id) || Number(id) <= 0) {
+      throw new ValidationError({ id: INVALID_ID }, INVALID_ID);
+    }
+
+    return id;
+  }
+
   function listServices(_req: Request, res: Response): void {
     res.status(200).json({
       success: true,
@@ -10,116 +24,49 @@ export function createServiceController(serviceService: ServiceService) {
   }
 
   function createService(req: Request, res: Response): void {
-    try {
-      const service = serviceService.createService(req.body);
+    const service = serviceService.createService(req.body);
 
-      res.status(201).json({
-        success: true,
-        data: service,
-      });
-    } catch (error: unknown) {
-      res.status(400).json({
-        success: false,
-        errors: [
-          error instanceof Error ? error.message : "Invalid service input.",
-        ],
-      });
-    }
+    res.status(201).json({ success: true, data: service });
   }
 
   function updateService(req: Request, res: Response): void {
-    const id = Number(req.params.id);
+    const service = serviceService.updateService(readServiceId(req), req.body);
 
-    if (!Number.isSafeInteger(id) || id <= 0) {
-      res.status(400).json({
-        success: false,
-        errors: ["Service ID must be a positive integer."],
-      });
-      return;
+    if (!service) {
+      throw new HttpError(404, "Service not found.");
     }
 
-    try {
-      const service = serviceService.updateService(id, req.body);
-
-      if (!service) {
-        res.status(404).json({
-          success: false,
-          errors: ["Service not found."],
-        });
-        return;
-      }
-
-      res.status(200).json({
-        success: true,
-        data: service,
-      });
-    } catch (error: unknown) {
-      res.status(400).json({
-        success: false,
-        errors: [
-          error instanceof Error ? error.message : "Invalid service input.",
-        ],
-      });
-    }
+    res.status(200).json({ success: true, data: service });
   }
 
   function setServiceAvailability(req: Request, res: Response): void {
-    const id = Number(req.params.id);
-
-    if (!Number.isSafeInteger(id) || id <= 0) {
-      res.status(400).json({
-        success: false,
-        errors: ["Service ID must be a positive integer."],
-      });
-      return;
-    }
-
     const body = req.body as { isAvailable?: unknown } | null;
     const isAvailable = body?.isAvailable;
 
     if (typeof isAvailable !== "boolean") {
-      res.status(400).json({
-        success: false,
-        errors: ["isAvailable must be a boolean."],
-      });
-      return;
+      throw new ValidationError(
+        { isAvailable: "isAvailable must be a boolean." },
+        "isAvailable must be a boolean.",
+      );
     }
 
-    const service = serviceService.setAvailability(id, isAvailable);
+    const service = serviceService.setAvailability(
+      readServiceId(req),
+      isAvailable,
+    );
 
     if (!service) {
-      res.status(404).json({
-        success: false,
-        errors: ["Service not found."],
-      });
-      return;
+      throw new HttpError(404, "Service not found.");
     }
 
-    res.status(200).json({
-      success: true,
-      data: service,
-    });
+    res.status(200).json({ success: true, data: service });
   }
 
   function removeService(req: Request, res: Response): void {
-    const id = Number(req.params.id);
-
-    if (!Number.isSafeInteger(id) || id <= 0) {
-      res.status(400).json({
-        success: false,
-        errors: ["Service ID must be a positive integer."],
-      });
-      return;
-    }
-
-    const removed = serviceService.removeService(id);
+    const removed = serviceService.removeService(readServiceId(req));
 
     if (!removed) {
-      res.status(404).json({
-        success: false,
-        errors: ["Service not found."],
-      });
-      return;
+      throw new HttpError(404, "Service not found.");
     }
 
     res.status(200).json({

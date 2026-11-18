@@ -101,7 +101,7 @@ describe("queueService", () => {
         success: true,
         data: [
           {
-            id: 7,
+            id: "7",
             name: "Dentist",
             description: "Checkup",
             duration: 30,

@@ -16,10 +16,6 @@ export const requireAuth: RequestHandler = async (req, res, next) => {
     return;
   }
 
-  try {
-    res.locals.user = await verifySession(token, clientIp(req));
-    next();
-  } catch (error) {
-    next(error);
-  }
+  res.locals.user = await verifySession(token, clientIp(req));
+  next();
 };

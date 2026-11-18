@@ -5,44 +5,20 @@ import type {
   RegisterInput,
 } from "../types/auth";
 import { ValidationError, type FieldErrors } from "../utils/errors";
+import { EMAIL_PATTERN, asRecord, hasFieldErrors, readText } from "./shared";
 
-const EMAIL_PATTERN = /^\S+@\S+\.\S+$/;
 const MAX_NAME_LENGTH = 50;
 const MIN_PASSWORD_LENGTH = 8;
 
-function asRecord(body: unknown): Record<string, unknown> {
-  return typeof body === "object" && body !== null && !Array.isArray(body)
-    ? (body as Record<string, unknown>)
-    : {};
-}
-
-function readTrimmed(source: Record<string, unknown>, key: string): string {
-  const value = source[key];
-  return typeof value === "string" ? value.trim() : "";
-}
-
-function readPassword(source: Record<string, unknown>): string {
-  const value = source.password;
-  return typeof value === "string" ? value : "";
-}
-
-function readString(source: Record<string, unknown>, key: string): string {
-  const value = source[key];
-  return typeof value === "string" ? value : "";
-}
-
-function readOptionalString(
+function readOptionalText(
   source: Record<string, unknown>,
   key: string,
 ): string | undefined {
-  if (!(key in source)) return undefined;
-
-  const value = source[key];
-  return typeof value === "string" ? value.trim() : "";
+  return key in source ? readText(source, key) : undefined;
 }
 
 function ensureValid(fieldErrors: FieldErrors): void {
-  if (Object.keys(fieldErrors).length > 0) {
+  if (hasFieldErrors(fieldErrors)) {
     throw new ValidationError(fieldErrors);
   }
 }
@@ -68,10 +44,22 @@ function validateName(
   }
 }
 
+function validateNewPassword(
+  password: string,
+  fieldErrors: FieldErrors,
+  field = "password",
+): void {
+  if (!password) {
+    fieldErrors[field] = "Password is required";
+  } else if (password.length < MIN_PASSWORD_LENGTH) {
+    fieldErrors[field] = "Password must be at least 8 characters";
+  }
+}
+
 export function validateLogin(body: unknown): LoginInput {
   const source = asRecord(body);
-  const email = readTrimmed(source, "email");
-  const password = readPassword(source);
+  const email = readText(source, "email");
+  const password = readText(source, "password", { trim: false });
   const fieldErrors: FieldErrors = {};
 
   validateEmail(email, fieldErrors);
@@ -83,27 +71,23 @@ export function validateLogin(body: unknown): LoginInput {
 
 export function validateRegister(body: unknown): RegisterInput {
   const source = asRecord(body);
-  const firstName = readTrimmed(source, "firstName");
-  const lastName = readTrimmed(source, "lastName");
-  const email = readTrimmed(source, "email");
-  const password = readPassword(source);
+  const firstName = readText(source, "firstName");
+  const lastName = readText(source, "lastName");
+  const email = readText(source, "email");
+  const password = readText(source, "password", { trim: false });
   const fieldErrors: FieldErrors = {};
 
   validateName(firstName, "firstName", "First name", fieldErrors);
   validateName(lastName, "lastName", "Last name", fieldErrors);
   validateEmail(email, fieldErrors);
-
-  if (!password) fieldErrors.password = "Password is required";
-  else if (password.length < MIN_PASSWORD_LENGTH) {
-    fieldErrors.password = "Password must be at least 8 characters";
-  }
+  validateNewPassword(password, fieldErrors);
 
   ensureValid(fieldErrors);
   return { firstName, lastName, email, password };
 }
 
 export function validatePasswordReset(body: unknown): { email: string } {
-  const email = readTrimmed(asRecord(body), "email");
+  const email = readText(asRecord(body), "email");
   const fieldErrors: FieldErrors = {};
 
   validateEmail(email, fieldErrors);
@@ -114,8 +98,8 @@ export function validatePasswordReset(body: unknown): { email: string } {
 
 export function validateProfileUpdate(body: unknown): ProfileUpdateInput {
   const source = asRecord(body);
-  const firstName = readOptionalString(source, "firstName");
-  const lastName = readOptionalString(source, "lastName");
+  const firstName = readOptionalText(source, "firstName");
+  const lastName = readOptionalText(source, "lastName");
 
   if (firstName === undefined && lastName === undefined) {
     throw new ValidationError({}, "No profile changes were provided");
@@ -139,19 +123,17 @@ export function validateProfileUpdate(body: unknown): ProfileUpdateInput {
 
 export function validatePasswordChange(body: unknown): PasswordChangeInput {
   const source = asRecord(body);
-  const currentPassword = readString(source, "currentPassword");
-  const newPassword = readString(source, "newPassword");
+  const currentPassword = readText(source, "currentPassword", { trim: false });
+  const newPassword = readText(source, "newPassword", { trim: false });
   const fieldErrors: FieldErrors = {};
 
   if (!currentPassword) {
     fieldErrors.currentPassword = "Current password is required";
   }
 
-  if (!newPassword) {
-    fieldErrors.newPassword = "Password is required";
-  } else if (newPassword.length < MIN_PASSWORD_LENGTH) {
-    fieldErrors.newPassword = "Password must be at least 8 characters";
-  } else if (currentPassword && newPassword === currentPassword) {
+  validateNewPassword(newPassword, fieldErrors, "newPassword");
+
+  if (newPassword && currentPassword && newPassword === currentPassword) {
     fieldErrors.newPassword =
       "New password must be different from your current password";
   }

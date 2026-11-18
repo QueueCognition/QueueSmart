@@ -1,9 +1,16 @@
 import { randomUUID } from "node:crypto";
+import { transaction } from "../db/sqlite";
+import { PRIORITY_RANK } from "../models/service";
 import {
   closeQueueIfEmpty,
+  findEntryById,
   insertEntry,
+  listActiveEntries,
+  listActiveEntriesForUser,
+  listClosedEntriesForUser,
   listEntries,
   nextTicketSequence,
+  reprioritize,
   updateEntry,
 } from "../models/queueStore";
 import type {
@@ -12,15 +19,11 @@ import type {
   QueueSummaryRecord,
   ServeNextResult,
   Service,
-  ServicePriority,
   WaitEstimate,
 } from "../types/queue";
 import { maskPatientName } from "../utils/maskName";
 import { HttpError } from "../utils/errors";
-import {
-  estimateWaitForNewJoiner,
-  estimateWaitMinutes,
-} from "../utils/waitTime";
+import { estimateWaitForNewJoiner } from "../utils/waitTime";
 import type { JoinQueueInput } from "../validators/queueValidators";
 import { createNotification } from "./notificationService";
 
@@ -28,12 +31,6 @@ export interface ServiceCatalog {
   list(): Service[] | Promise<Service[]>;
   find(serviceId: string): Service | undefined | Promise<Service | undefined>;
 }
-
-const PRIORITY_RANK: Record<ServicePriority, number> = {
-  low: 0,
-  medium: 1,
-  high: 2,
-};
 
 export function compareEntries(
   a: QueueEntryRecord,
@@ -76,11 +73,8 @@ export class QueueService {
   }
 
   private async requireService(serviceId: string): Promise<Service> {
-    // Ensure string comparison matching regardless of spacing or type formatting
     const resolvedCatalog = await this.catalog.list();
-    const match = resolvedCatalog.find(
-      (s) => String(s.id) === String(serviceId).trim(),
-    );
+    const match = resolvedCatalog.find((s) => s.id === serviceId);
 
     if (!match) {
       throw new HttpError(404, "Service not found");
@@ -89,7 +83,7 @@ export class QueueService {
   }
 
   private findEntry(entryId: string): QueueEntryRecord {
-    const entry = listEntries().find((e) => e.id === entryId);
+    const entry = findEntryById(entryId);
     if (!entry) throw new HttpError(404, "Queue entry not found");
     return entry;
   }
@@ -99,45 +93,44 @@ export class QueueService {
     serviceId: string,
   ): QueueEntryRecord[] {
     return entries
-      .filter(
-        (e) => String(e.serviceId) === String(serviceId).trim() && isActive(e),
-      )
+      .filter((e) => e.serviceId === serviceId && isActive(e))
       .sort(compareEntries);
   }
 
   private activeEntries(serviceId: string): QueueEntryRecord[] {
-    return this.activeEntriesFrom(listEntries(), serviceId);
+    return listActiveEntries(serviceId);
   }
 
   private refresh(service: Service): void {
-    this.activeEntries(service.id).forEach((entry, index) => {
-      entry.position = index + 1;
-      entry.estimatedWaitMinutes = estimateWaitMinutes(entry.position, service);
-      entry.status = entry.position === 1 ? "almost_ready" : "waiting";
-      updateEntry(entry);
-    });
+    reprioritize(service.id, service.expectedDuration);
   }
 
   private summarize(service: Service): QueueSummaryRecord {
-    return this.summarizeFrom(listEntries(), service);
+    return this.summarizeWaitlist(this.activeEntries(service.id), service);
+  }
+
+  private summarizeWaitlist(
+    waitingList: QueueEntryRecord[],
+    service: Service,
+  ): QueueSummaryRecord {
+    const copied = waitingList.map((entry) => ({ ...entry }));
+    const lastEntry = copied[copied.length - 1];
+    return {
+      service: { ...service },
+      waitingCount: copied.length,
+      estimatedWaitMinutes: lastEntry ? lastEntry.estimatedWaitMinutes : 0,
+      waitingList: copied,
+    };
   }
 
   private summarizeFrom(
     entries: readonly QueueEntryRecord[],
     service: Service,
   ): QueueSummaryRecord {
-    const waitingList = this.activeEntriesFrom(entries, service.id).map(
-      (e) => ({
-        ...e,
-      }),
+    return this.summarizeWaitlist(
+      this.activeEntriesFrom(entries, service.id),
+      service,
     );
-    const lastEntry = waitingList[waitingList.length - 1];
-    return {
-      service: { ...service },
-      waitingCount: waitingList.length,
-      estimatedWaitMinutes: lastEntry ? lastEntry.estimatedWaitMinutes : 0,
-      waitingList,
-    };
   }
 
   async join(userId: string, input: JoinQueueInput): Promise<QueueEntryRecord> {
@@ -176,16 +169,18 @@ export class QueueService {
       ticketNumber: `${ticketPrefix(service)}-${nextTicketSequence()}`,
     };
 
-    insertEntry(entry);
-    this.refresh(service);
+    return transaction(() => {
+      insertEntry(entry);
+      this.refresh(service);
 
-    createNotification(
-      userId,
-      `You joined the queue for ${service.name}.`,
-      "queue_update",
-    );
+      createNotification(
+        userId,
+        `You joined the queue for ${service.name}.`,
+        "queue_update",
+      );
 
-    return { ...this.findEntry(entry.id) };
+      return { ...this.findEntry(entry.id) };
+    });
   }
 
   async leave(entryId: string, userId: string): Promise<QueueEntryRecord> {
@@ -202,32 +197,34 @@ export class QueueService {
     const service = await this.catalog.find(entry.serviceId);
     const wasFirst = this.activeEntries(entry.serviceId)[0]?.id === entry.id;
 
-    closeEntry(entry, "cancelled");
-    updateEntry(entry);
-    createNotification(
-      userId,
-      `You left the queue for ${service?.name ?? entry.serviceId}.`,
-      "queue_update",
-    );
+    return transaction(() => {
+      closeEntry(entry, "cancelled");
+      updateEntry(entry);
+      createNotification(
+        userId,
+        `You left the queue for ${service?.name ?? entry.serviceId}.`,
+        "queue_update",
+      );
 
-    if (service) {
-      this.refresh(service);
-      closeQueueIfEmpty(service.id);
+      if (service) {
+        this.refresh(service);
+        closeQueueIfEmpty(service.id);
 
-      if (wasFirst) {
-        const [nextUp] = this.activeEntries(service.id);
+        if (wasFirst) {
+          const [nextUp] = this.activeEntries(service.id);
 
-        if (nextUp) {
-          createNotification(
-            nextUp.userId,
-            `You're next to be served for ${service.name}.`,
-            "queue_update",
-          );
+          if (nextUp) {
+            createNotification(
+              nextUp.userId,
+              `You're next to be served for ${service.name}.`,
+              "queue_update",
+            );
+          }
         }
       }
-    }
 
-    return { ...entry };
+      return { ...entry };
+    });
   }
 
   getEntry(entryId: string, userId: string): QueueEntryRecord {
@@ -239,23 +236,11 @@ export class QueueService {
   }
 
   listForUser(userId: string): QueueEntryRecord[] {
-    return listEntries()
-      .filter((e) => e.userId === userId && isActive(e))
-      .sort(
-        (a, b) =>
-          new Date(a.joinedAt).getTime() - new Date(b.joinedAt).getTime(),
-      )
-      .map((e) => ({ ...e }));
+    return listActiveEntriesForUser(userId).map((entry) => ({ ...entry }));
   }
 
   getHistoryForUser(userId: string): QueueEntryRecord[] {
-    return listEntries()
-      .filter((entry) => entry.userId === userId && !isActive(entry))
-      .sort(
-        (a, b) =>
-          new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
-      )
-      .map((entry) => ({ ...entry }));
+    return listClosedEntriesForUser(userId).map((entry) => ({ ...entry }));
   }
 
   async getWaitEstimate(serviceId: string): Promise<WaitEstimate> {
@@ -295,21 +280,23 @@ export class QueueService {
     const [next] = this.activeEntries(serviceId);
     if (!next) throw new HttpError(409, "No one is waiting for this service");
 
-    closeEntry(next, "served");
-    updateEntry(next);
-    this.refresh(service);
-    closeQueueIfEmpty(service.id);
+    return transaction(() => {
+      closeEntry(next, "served");
+      updateEntry(next);
+      this.refresh(service);
+      closeQueueIfEmpty(service.id);
 
-    const [nextUp] = this.activeEntries(serviceId);
+      const [nextUp] = this.activeEntries(serviceId);
 
-    if (nextUp) {
-      createNotification(
-        nextUp.userId,
-        `You're next to be served for ${service.name}.`,
-        "queue_update",
-      );
-    }
+      if (nextUp) {
+        createNotification(
+          nextUp.userId,
+          `You're next to be served for ${service.name}.`,
+          "queue_update",
+        );
+      }
 
-    return { served: { ...next }, nextUp: nextUp ? { ...nextUp } : null };
+      return { served: { ...next }, nextUp: nextUp ? { ...nextUp } : null };
+    });
   }
 }
