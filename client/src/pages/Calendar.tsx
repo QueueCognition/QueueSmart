@@ -1,10 +1,17 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { addMonths, isSameMonth, startOfMonth } from "date-fns";
 import "../styles/calendar.css";
 import { useAuth } from "../context/AuthContext";
 import { queryKeys } from "../lib/queryClient";
 import { getMyQueue, getQueueHistory } from "../services/queueService";
 import { useServices } from "../hooks/useServices";
+import {
+  buildMonthGrid,
+  formatMonthName,
+  formatMonthYear,
+  toDateKey,
+} from "../utils/dateUtils";
 
 function Calendar() {
   const { user } = useAuth();
@@ -30,22 +37,14 @@ function Calendar() {
   const [currentMonth, setCurrentMonth] = useState(() => new Date());
 
   function changeMonth(amount: number) {
-    setCurrentMonth(
-      (current) =>
-        new Date(current.getFullYear(), current.getMonth() + amount, 1),
-    );
+    setCurrentMonth((current) => addMonths(startOfMonth(current), amount));
   }
 
-  const monthYear = currentMonth.toLocaleDateString("en-US", {
-    month: "long",
-    year: "numeric",
-  });
+  const monthYear = formatMonthYear(currentMonth);
 
   const monthOptions = Array.from({ length: 12 }, (_, index) => ({
     value: String(index),
-    label: new Date(2000, index, 1).toLocaleDateString("en-US", {
-      month: "long",
-    }),
+    label: formatMonthName(new Date(2000, index, 1)),
   }));
 
   const currentYear = new Date().getFullYear();
@@ -55,46 +54,17 @@ function Calendar() {
     (_, index) => currentYear - 5 + index,
   );
 
-  const firstDay = new Date(
-    currentMonth.getFullYear(),
-    currentMonth.getMonth(),
-    1,
-  ).getDay();
+  const calendarDays = buildMonthGrid(currentMonth);
 
-  const daysInMonth = new Date(
-    currentMonth.getFullYear(),
-    currentMonth.getMonth() + 1,
-    0,
-  ).getDate();
-
-  const calendarDays = [
-    ...Array(firstDay).fill(null),
-    ...Array.from({ length: daysInMonth }, (_, index) => index + 1),
-  ];
-
-  while (calendarDays.length % 7 !== 0) {
-    calendarDays.push(null);
-  }
-
-  const today = new Date();
-  const isCurrentMonth =
-    today.getFullYear() === currentMonth.getFullYear() &&
-    today.getMonth() === currentMonth.getMonth();
+  const isCurrentMonth = isSameMonth(new Date(), currentMonth);
+  const todayDate = new Date().getDate();
 
   const weekdays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
   function getEntriesForDay(day: number) {
-    const date = new Date(
-      currentMonth.getFullYear(),
-      currentMonth.getMonth(),
-      day,
+    const dateString = toDateKey(
+      new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day),
     );
-
-    const dateString = [
-      date.getFullYear(),
-      String(date.getMonth() + 1).padStart(2, "0"),
-      String(date.getDate()).padStart(2, "0"),
-    ].join("-");
 
     return [...myQueue, ...history].filter(
       (entry) => entry.date === dateString,
@@ -182,9 +152,7 @@ function Calendar() {
               className={`calendar-day ${
                 day === null ? "calendar-day-empty" : ""
               } ${
-                isCurrentMonth && day === today.getDate()
-                  ? "calendar-day-today"
-                  : ""
+                isCurrentMonth && day === todayDate ? "calendar-day-today" : ""
               }`}
               key={index}
             >

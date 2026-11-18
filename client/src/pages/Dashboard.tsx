@@ -8,6 +8,7 @@ import { useAuth } from "../context/AuthContext";
 import { queryKeys } from "../lib/queryClient";
 import { describeApiError } from "../services/apiClient";
 import { getMyQueue, getQueueHistory } from "../services/queueService";
+import { toDateKey } from "../utils/dateUtils";
 
 function Dashboard() {
   const { user } = useAuth();
@@ -37,7 +38,7 @@ function Dashboard() {
       ? describeApiError(historyQuery.error, "Failed to load queue history.")
       : "";
 
-  const todayString = new Date().toISOString().split("T")[0];
+  const todayString = toDateKey(new Date());
 
   const upcomingAppointments = myQueue
     .filter(
