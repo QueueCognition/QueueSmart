@@ -1,4 +1,5 @@
-import "dotenv/config";
+import { existsSync } from "node:fs";
+import { resolve } from "node:path";
 
 const DEFAULT_PORT = 4000;
 const DEFAULT_API_PREFIX = "/api";
@@ -6,6 +7,15 @@ const DEFAULT_CORS_ORIGIN = "http://localhost:5173";
 const DEFAULT_DATABASE_URL = "./data/queuesmart.db";
 const DEFAULT_TOKEN_TTL_SECONDS = 8 * 60 * 60;
 const UNIT_SECONDS: Record<string, number> = { s: 1, m: 60, h: 3600, d: 86400 };
+
+function loadEnvFile(path: string): void {
+  const file = resolve(path);
+  if (!existsSync(file)) return;
+
+  process.loadEnvFile(file);
+}
+
+loadEnvFile(".env");
 
 function readString(key: string, fallback: string): string {
   const value = process.env[key];
