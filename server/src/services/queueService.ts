@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { transaction } from "../db/sqlite";
 import {
   closeQueueIfEmpty,
   insertEntry,
@@ -176,16 +177,18 @@ export class QueueService {
       ticketNumber: `${ticketPrefix(service)}-${nextTicketSequence()}`,
     };
 
-    insertEntry(entry);
-    this.refresh(service);
+    return transaction(() => {
+      insertEntry(entry);
+      this.refresh(service);
 
-    createNotification(
-      userId,
-      `You joined the queue for ${service.name}.`,
-      "queue_update",
-    );
+      createNotification(
+        userId,
+        `You joined the queue for ${service.name}.`,
+        "queue_update",
+      );
 
-    return { ...this.findEntry(entry.id) };
+      return { ...this.findEntry(entry.id) };
+    });
   }
 
   async leave(entryId: string, userId: string): Promise<QueueEntryRecord> {
@@ -202,32 +205,34 @@ export class QueueService {
     const service = await this.catalog.find(entry.serviceId);
     const wasFirst = this.activeEntries(entry.serviceId)[0]?.id === entry.id;
 
-    closeEntry(entry, "cancelled");
-    updateEntry(entry);
-    createNotification(
-      userId,
-      `You left the queue for ${service?.name ?? entry.serviceId}.`,
-      "queue_update",
-    );
+    return transaction(() => {
+      closeEntry(entry, "cancelled");
+      updateEntry(entry);
+      createNotification(
+        userId,
+        `You left the queue for ${service?.name ?? entry.serviceId}.`,
+        "queue_update",
+      );
 
-    if (service) {
-      this.refresh(service);
-      closeQueueIfEmpty(service.id);
+      if (service) {
+        this.refresh(service);
+        closeQueueIfEmpty(service.id);
 
-      if (wasFirst) {
-        const [nextUp] = this.activeEntries(service.id);
+        if (wasFirst) {
+          const [nextUp] = this.activeEntries(service.id);
 
-        if (nextUp) {
-          createNotification(
-            nextUp.userId,
-            `You're next to be served for ${service.name}.`,
-            "queue_update",
-          );
+          if (nextUp) {
+            createNotification(
+              nextUp.userId,
+              `You're next to be served for ${service.name}.`,
+              "queue_update",
+            );
+          }
         }
       }
-    }
 
-    return { ...entry };
+      return { ...entry };
+    });
   }
 
   getEntry(entryId: string, userId: string): QueueEntryRecord {
@@ -295,21 +300,23 @@ export class QueueService {
     const [next] = this.activeEntries(serviceId);
     if (!next) throw new HttpError(409, "No one is waiting for this service");
 
-    closeEntry(next, "served");
-    updateEntry(next);
-    this.refresh(service);
-    closeQueueIfEmpty(service.id);
+    return transaction(() => {
+      closeEntry(next, "served");
+      updateEntry(next);
+      this.refresh(service);
+      closeQueueIfEmpty(service.id);
 
-    const [nextUp] = this.activeEntries(serviceId);
+      const [nextUp] = this.activeEntries(serviceId);
 
-    if (nextUp) {
-      createNotification(
-        nextUp.userId,
-        `You're next to be served for ${service.name}.`,
-        "queue_update",
-      );
-    }
+      if (nextUp) {
+        createNotification(
+          nextUp.userId,
+          `You're next to be served for ${service.name}.`,
+          "queue_update",
+        );
+      }
 
-    return { served: { ...next }, nextUp: nextUp ? { ...nextUp } : null };
+      return { served: { ...next }, nextUp: nextUp ? { ...nextUp } : null };
+    });
   }
 }
