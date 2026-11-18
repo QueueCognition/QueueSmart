@@ -1,85 +1,41 @@
 import { useNotifications } from "../context/NotificationContext";
 import { useQueueStatus } from "../hooks/useQueueStatus";
-import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { useServices } from "../hooks/useServices";
 import "../styles/dashboard.css";
 import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import {
-  getMyQueue,
-  getQueueHistory,
-  getServices,
-} from "../services/queueService";
-import type { QueueEntry, Service } from "../types/queue";
+import { queryKeys } from "../lib/queryClient";
+import { describeApiError } from "../services/apiClient";
+import { getMyQueue, getQueueHistory } from "../services/queueService";
 
 function Dashboard() {
   const { user } = useAuth();
   const { notifications, markRead } = useNotifications();
   const { entry, error: queueError, loading: queueLoading } = useQueueStatus();
+  const servicesQuery = useServices();
+  const services = servicesQuery.data ?? [];
 
-  const [queueHistory, setQueueHistory] = useState<QueueEntry[]>([]);
-  const [myQueue, setMyQueue] = useState<QueueEntry[]>([]);
-  const [historyLoading, setHistoryLoading] = useState(true);
-  const [historyError, setHistoryError] = useState("");
-  const [services, setServices] = useState<Service[]>([]);
+  const myQueueQuery = useQuery({
+    queryKey: queryKeys.myQueue,
+    queryFn: getMyQueue,
+    enabled: Boolean(user),
+  });
 
-  useEffect(() => {
-    if (!user) return;
+  const historyQuery = useQuery({
+    queryKey: queryKeys.queueHistory,
+    queryFn: getQueueHistory,
+    enabled: Boolean(user),
+  });
 
-    let active = true;
-
-    async function loadQueueHistory() {
-      try {
-        const [activeEntries, history] = await Promise.all([
-          getMyQueue(),
-          getQueueHistory(),
-        ]);
-
-        if (active) {
-          setMyQueue(activeEntries);
-          setQueueHistory(history);
-          setHistoryError("");
-        }
-      } catch (cause) {
-        if (active) {
-          setHistoryError(
-            cause instanceof Error
-              ? cause.message
-              : "Failed to load queue history.",
-          );
-        }
-      } finally {
-        if (active) {
-          setHistoryLoading(false);
-        }
-      }
-    }
-
-    void loadQueueHistory();
-
-    return () => {
-      active = false;
-    };
-  }, [user]);
-
-  useEffect(() => {
-    if (!user) return;
-
-    let active = true;
-
-    getServices()
-      .then((loadedServices) => {
-        if (active) {
-          setServices(loadedServices);
-        }
-      })
-      .catch((error) => {
-        console.error("Failed to load services:", error);
-      });
-
-    return () => {
-      active = false;
-    };
-  }, [user]);
+  const myQueue = myQueueQuery.data ?? [];
+  const queueHistory = historyQuery.data ?? [];
+  const historyLoading = myQueueQuery.isPending || historyQuery.isPending;
+  const historyError = myQueueQuery.isError
+    ? describeApiError(myQueueQuery.error, "Failed to load queue history.")
+    : historyQuery.isError
+      ? describeApiError(historyQuery.error, "Failed to load queue history.")
+      : "";
 
   const todayString = new Date().toISOString().split("T")[0];
 

@@ -1,19 +1,23 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import type { FormEvent } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import {
-  getServices,
   createService,
   updateService,
   deleteService,
   setServiceAvailability,
 } from "../services/serviceApi";
 import type { Service, Priority } from "../services/serviceApi";
+import { useManagedServices } from "../hooks/useServices";
+import { queryKeys } from "../lib/queryClient";
 import "../styles/servicemanagement.css";
 
 function ServiceManagement() {
-  const [services, setServices] = useState<Service[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [apiError, setApiError] = useState("");
+  const client = useQueryClient();
+  const servicesQuery = useManagedServices();
+  const services = servicesQuery.data ?? [];
+  const loading = servicesQuery.isPending;
+  const [saveError, setSaveError] = useState("");
   const [saving, setSaving] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
 
@@ -23,33 +27,19 @@ function ServiceManagement() {
   const [priority, setPriority] = useState<Priority>("medium");
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  useEffect(() => {
-    let cancelled = false;
+  const apiError =
+    saveError ||
+    (servicesQuery.isError
+      ? servicesQuery.error instanceof Error
+        ? servicesQuery.error.message
+        : "Failed to load services."
+      : "");
 
-    getServices()
-      .then((data) => {
-        if (!cancelled) {
-          setServices(data);
-          setApiError("");
-        }
-      })
-      .catch((error: unknown) => {
-        if (!cancelled) {
-          setApiError(
-            error instanceof Error ? error.message : "Failed to load services.",
-          );
-        }
-      })
-      .finally(() => {
-        if (!cancelled) {
-          setLoading(false);
-        }
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  const refreshServices = () =>
+    Promise.all([
+      client.invalidateQueries({ queryKey: queryKeys.adminServices }),
+      client.invalidateQueries({ queryKey: queryKeys.services }),
+    ]);
 
   const resetForm = () => {
     setName("");
@@ -92,7 +82,7 @@ function ServiceManagement() {
     }
 
     setSaving(true);
-    setApiError("");
+    setSaveError("");
 
     const serviceData = {
       name: name.trim(),
@@ -103,22 +93,15 @@ function ServiceManagement() {
 
     try {
       if (editingId !== null) {
-        const updatedService = await updateService(editingId, serviceData);
-
-        setServices((currentServices) =>
-          currentServices.map((service) =>
-            service.id === editingId ? updatedService : service,
-          ),
-        );
+        await updateService(editingId, serviceData);
       } else {
-        const newService = await createService(serviceData);
-
-        setServices((currentServices) => [...currentServices, newService]);
+        await createService(serviceData);
       }
 
+      await refreshServices();
       resetForm();
     } catch (error: unknown) {
-      setApiError(
+      setSaveError(
         error instanceof Error ? error.message : "Failed to save the service.",
       );
     } finally {
@@ -133,7 +116,7 @@ function ServiceManagement() {
     setDuration(String(service.duration));
     setPriority(service.priority);
     setErrors({});
-    setApiError("");
+    setSaveError("");
   };
 
   const handleToggleAvailability = async (service: Service) => {
@@ -142,21 +125,13 @@ function ServiceManagement() {
     }
 
     setSaving(true);
-    setApiError("");
+    setSaveError("");
 
     try {
-      const updated = await setServiceAvailability(
-        service.id,
-        !service.isAvailable,
-      );
-
-      setServices((currentServices) =>
-        currentServices.map((item) =>
-          item.id === updated.id ? updated : item,
-        ),
-      );
+      await setServiceAvailability(service.id, !service.isAvailable);
+      await refreshServices();
     } catch (error: unknown) {
-      setApiError(
+      setSaveError(
         error instanceof Error
           ? error.message
           : "Failed to update the service availability.",
@@ -180,20 +155,18 @@ function ServiceManagement() {
     }
 
     setSaving(true);
-    setApiError("");
+    setSaveError("");
 
     try {
       await deleteService(id);
 
-      setServices((currentServices) =>
-        currentServices.filter((service) => service.id !== id),
-      );
+      await refreshServices();
 
       if (editingId === id) {
         resetForm();
       }
     } catch (error: unknown) {
-      setApiError(
+      setSaveError(
         error instanceof Error
           ? error.message
           : "Failed to remove the service.",

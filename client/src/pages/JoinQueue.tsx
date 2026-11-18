@@ -1,16 +1,12 @@
 import "../styles/joinqueue.css";
-import { useEffect, useState } from "react";
-import type { QueueEntry, Service } from "../types/queue";
-import {
-  getMyQueue,
-  getServices,
-  getWaitEstimate,
-  joinQueue,
-  leaveQueue,
-} from "../services/queueService";
-import type { WaitEstimate } from "../types/queue";
+import { useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import type { QueueEntry } from "../types/queue";
+import { getMyQueue, joinQueue, leaveQueue } from "../services/queueService";
 import { describeApiError } from "../services/apiClient";
 import { useAuth } from "../context/AuthContext";
+import { useServices, useWaitEstimate } from "../hooks/useServices";
+import { queryKeys } from "../lib/queryClient";
 import { Link } from "react-router-dom";
 
 const TIME_SLOTS = [
@@ -25,7 +21,8 @@ const TIME_SLOTS = [
 ];
 
 function JoinQueue() {
-  const [services, setServices] = useState<Service[]>([]);
+  const servicesQuery = useServices();
+  const services = servicesQuery.data ?? [];
   const [serviceId, setServiceId] = useState("");
   const [date, setDate] = useState("");
   const [timeSlot, setTimeSlot] = useState("");
@@ -34,66 +31,32 @@ function JoinQueue() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [myQueue, setMyQueue] = useState<QueueEntry[]>([]);
-  const [waitEstimate, setWaitEstimate] = useState<WaitEstimate | null>(null);
   const { isAuthenticated } = useAuth();
+  const client = useQueryClient();
 
-  useEffect(() => {
-    let active = true;
-    getServices()
-      .then((data) => {
-        if (active) setServices(data);
-      })
-      .catch((error: unknown) => {
-        if (active) {
-          setFormError(describeApiError(error, "Failed to load services."));
-        }
-      });
-    return () => {
-      active = false;
-    };
-  }, []);
+  const myQueueQuery = useQuery({
+    queryKey: queryKeys.myQueue,
+    queryFn: getMyQueue,
+    enabled: isAuthenticated,
+  });
+  const myQueue = myQueueQuery.data ?? [];
 
-  useEffect(() => {
-    if (!isAuthenticated) return;
-
-    let active = true;
-    getMyQueue()
-      .then((entries) => {
-        if (active) setMyQueue(entries);
-      })
-      .catch((error: unknown) => {
-        if (active) {
-          setFormError(describeApiError(error, "Failed to load your queue."));
-        }
-      });
-    return () => {
-      active = false;
-    };
-  }, [isAuthenticated]);
+  const waitEstimateQuery = useWaitEstimate(serviceId || undefined);
+  const waitEstimate = waitEstimateQuery.data ?? null;
 
   const selectedService = services.find((s) => s.id === serviceId);
 
-  useEffect(() => {
-    if (!serviceId) return;
-
-    let active = true;
-    getWaitEstimate(serviceId)
-      .then((estimate) => {
-        if (active) setWaitEstimate(estimate);
-      })
-      .catch((error: unknown) => {
-        if (active) {
-          setWaitEstimate(null);
-          setFormError(
-            describeApiError(error, "Failed to load the wait estimate."),
-          );
-        }
-      });
-    return () => {
-      active = false;
-    };
-  }, [serviceId]);
+  const loadError =
+    (servicesQuery.isError &&
+      describeApiError(servicesQuery.error, "Failed to load services.")) ||
+    (myQueueQuery.isError &&
+      describeApiError(myQueueQuery.error, "Failed to load your queue.")) ||
+    (waitEstimateQuery.isError &&
+      describeApiError(
+        waitEstimateQuery.error,
+        "Failed to load the wait estimate.",
+      )) ||
+    "";
 
   function validate() {
     const next: Record<string, string> = {};
@@ -128,14 +91,14 @@ function JoinQueue() {
     setFormError("");
     setSubmitting(true);
     try {
-      const entry = await joinQueue({
+      await joinQueue({
         serviceId,
         fullName,
         email,
         date,
         timeSlot,
       });
-      setMyQueue((current) => [...current, entry]);
+      await client.invalidateQueries({ queryKey: queryKeys.myQueue });
       setServiceId("");
       setDate("");
       setTimeSlot("");
@@ -154,12 +117,11 @@ function JoinQueue() {
     setFormError("");
     try {
       await leaveQueue(entry.id);
-      setMyQueue((current) => current.filter((item) => item.id !== entry.id));
+      await client.invalidateQueries({ queryKey: queryKeys.myQueue });
     } catch (error) {
       setFormError(describeApiError(error, "Failed to leave the queue."));
     }
   }
-
   return (
     <div className="join-queue-page">
       <div className="appointment-card">
@@ -279,9 +241,10 @@ function JoinQueue() {
             )}
           </div>
 
-          {formError && (
+          {(formError || loadError) && (
             <p className="field-error" role="alert">
-              {formError} {!isAuthenticated && <Link to="/login">Sign in</Link>}
+              {formError || loadError}{" "}
+              {!isAuthenticated && <Link to="/login">Sign in</Link>}
             </p>
           )}
 

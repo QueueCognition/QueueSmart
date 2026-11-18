@@ -1,5 +1,7 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "../context/AuthContext";
+import { POLL_INTERVAL_MS, queryKeys } from "../lib/queryClient";
 import { describeApiError } from "../services/apiClient";
 import { AuthError } from "../services/authError";
 import {
@@ -8,7 +10,6 @@ import {
 } from "../services/queueService";
 import type { QueueEntry, QueueServiceSummary } from "../types/queue";
 
-const REFRESH_INTERVAL_MS = 5000;
 const SESSION_EXPIRED_NOTICE = "Your session expired. Please sign in again.";
 
 export interface ServeNextOutcome {
@@ -26,92 +27,78 @@ export interface UseAdminQueuesResult {
   serveNext: (serviceId: string) => Promise<ServeNextOutcome | null>;
 }
 
+function isSessionExpired(cause: unknown): boolean {
+  return cause instanceof AuthError && cause.status === 401;
+}
+
 export function useAdminQueues(): UseAdminQueuesResult {
   const { logout } = useAuth();
-  const [summaries, setSummaries] = useState<QueueServiceSummary[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-  const [lastRefreshed, setLastRefreshed] = useState<Date | null>(null);
+  const client = useQueryClient();
   const [servingServiceId, setServingServiceId] = useState<string | null>(null);
+  const [serveError, setServeError] = useState("");
 
-  const mounted = useRef(true);
-  const sessionExpired = useRef(false);
-  const servingRef = useRef<string | null>(null);
+  const query = useQuery({
+    queryKey: queryKeys.adminQueues,
+    queryFn: getAdminServiceWaitSummaries,
+    refetchInterval: POLL_INTERVAL_MS,
+    refetchIntervalInBackground: false,
+    retry: false,
+  });
 
-  useEffect(() => {
-    mounted.current = true;
-    return () => {
-      mounted.current = false;
-    };
-  }, []);
-
-  const handleFailure = useCallback(
-    (cause: unknown, fallback: string) => {
-      if (cause instanceof AuthError && cause.status === 401) {
-        if (sessionExpired.current) return;
-        sessionExpired.current = true;
-        logout(SESSION_EXPIRED_NOTICE);
-        return;
-      }
-
-      if (!mounted.current) return;
-      setError(describeApiError(cause, fallback));
+  const serveMutation = useMutation({
+    mutationFn: serveNextEntry,
+    onSuccess: () => {
+      void client.invalidateQueries({ queryKey: queryKeys.adminQueues });
     },
-    [logout],
-  );
+  });
 
-  const sync = useCallback(() => {
-    getAdminServiceWaitSummaries()
-      .then((data) => {
-        if (!mounted.current) return;
-        setSummaries(data);
-        setLastRefreshed(new Date());
-        setError("");
-      })
-      .catch((cause: unknown) => {
-        handleFailure(cause, "Failed to load queue summaries.");
-      })
-      .finally(() => {
-        if (mounted.current) setLoading(false);
-      });
-  }, [handleFailure]);
+  const queryFailed = query.isError;
 
   useEffect(() => {
-    sync();
-    const interval = window.setInterval(sync, REFRESH_INTERVAL_MS);
-    return () => window.clearInterval(interval);
-  }, [sync]);
+    if (queryFailed && isSessionExpired(query.error)) {
+      logout(SESSION_EXPIRED_NOTICE);
+    }
+  }, [queryFailed, query.error, logout]);
 
   const refresh = useCallback(() => {
-    sync();
-  }, [sync]);
+    void query.refetch();
+  }, [query]);
 
   const serveNext = useCallback(
     async (serviceId: string): Promise<ServeNextOutcome | null> => {
-      if (servingRef.current !== null) return null;
+      if (servingServiceId !== null) return null;
 
-      servingRef.current = serviceId;
       setServingServiceId(serviceId);
+      setServeError("");
       try {
-        const outcome = await serveNextEntry(serviceId);
-        sync();
-        return outcome;
+        return await serveMutation.mutateAsync(serviceId);
       } catch (cause) {
-        handleFailure(cause, "Failed to update queue entry status.");
+        if (isSessionExpired(cause)) {
+          logout(SESSION_EXPIRED_NOTICE);
+        } else {
+          setServeError(
+            describeApiError(cause, "Failed to update queue entry status."),
+          );
+        }
         return null;
       } finally {
-        servingRef.current = null;
-        if (mounted.current) setServingServiceId(null);
+        setServingServiceId(null);
       }
     },
-    [handleFailure, sync],
+    [logout, serveMutation, servingServiceId],
   );
 
+  const error = queryFailed
+    ? isSessionExpired(query.error)
+      ? ""
+      : describeApiError(query.error, "Failed to load queue summaries.")
+    : serveError;
+
   return {
-    summaries,
-    loading,
+    summaries: query.data ?? [],
+    loading: query.isPending,
     error,
-    lastRefreshed,
+    lastRefreshed: query.dataUpdatedAt ? new Date(query.dataUpdatedAt) : null,
     servingServiceId,
     refresh,
     serveNext,

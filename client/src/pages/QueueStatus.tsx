@@ -1,10 +1,9 @@
 import "../styles/queuestatus.css";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useQueueStatus } from "../hooks/useQueueStatus";
+import { usePublicQueueBoard, useServices } from "../hooks/useServices";
 import { useAuth } from "../context/AuthContext";
 import { describeApiError } from "../services/apiClient";
-import { getPublicQueueBoard, getServices } from "../services/queueService";
-import type { PublicQueueRow, Service } from "../types/queue";
 
 const STAGES = ["waiting", "almost_ready", "served"];
 
@@ -15,66 +14,26 @@ function QueueStatus() {
     error: statusError,
     loading: statusLoading,
   } = useQueueStatus();
-  const [services, setServices] = useState<Service[]>([]);
+  const servicesQuery = useServices();
   const [serviceId, setServiceId] = useState("");
-  const [board, setBoard] = useState<PublicQueueRow[]>([]);
-  const [boardError, setBoardError] = useState("");
-  const [boardLoadedFor, setBoardLoadedFor] = useState("");
 
-  useEffect(() => {
-    let active = true;
-    getServices()
-      .then((data) => {
-        if (!active) return;
-        setServices(data);
-        setServiceId((current) => current || data[0]?.id || "");
-      })
-      .catch((error: unknown) => {
-        if (active) {
-          setBoardError(describeApiError(error, "Failed to load services."));
-        }
-      });
-    return () => {
-      active = false;
-    };
-  }, []);
+  const services = servicesQuery.data ?? [];
+  const boardServiceId =
+    entry?.serviceId ?? (serviceId || services[0]?.id || "");
 
-  const boardServiceId = entry?.serviceId ?? serviceId;
-
-  useEffect(() => {
-    if (!boardServiceId) return;
-
-    let active = true;
-    async function refreshBoard() {
-      try {
-        const rows = await getPublicQueueBoard(boardServiceId);
-        if (active) {
-          setBoard(rows);
-          setBoardError("");
-          setBoardLoadedFor(boardServiceId);
-        }
-      } catch (error) {
-        if (active) {
-          setBoardError(describeApiError(error, "Failed to load the queue."));
-          setBoardLoadedFor(boardServiceId);
-        }
-      }
-    }
-
-    void refreshBoard();
-    const interval = window.setInterval(() => void refreshBoard(), 5000);
-    return () => {
-      active = false;
-      window.clearInterval(interval);
-    };
-  }, [boardServiceId]);
+  const boardQuery = usePublicQueueBoard(boardServiceId || undefined);
+  const board = boardQuery.data ?? [];
+  const boardError = boardQuery.isError
+    ? describeApiError(boardQuery.error, "Failed to load the queue.")
+    : servicesQuery.isError
+      ? describeApiError(servicesQuery.error, "Failed to load services.")
+      : "";
+  const boardLoading = Boolean(boardServiceId) && boardQuery.isPending;
 
   const currentStageIndex = entry ? STAGES.indexOf(entry.status) : -1;
   const selectedService = services.find(
     (service) => service.id === boardServiceId,
   );
-  const boardLoading =
-    Boolean(boardServiceId) && boardLoadedFor !== boardServiceId;
 
   return (
     <div className="queue-status-page">

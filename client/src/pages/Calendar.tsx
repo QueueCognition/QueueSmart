@@ -1,71 +1,31 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import "../styles/calendar.css";
 import { useAuth } from "../context/AuthContext";
-import {
-  getMyQueue,
-  getQueueHistory,
-  getServices,
-} from "../services/queueService";
-import type { QueueEntry, Service } from "../types/queue";
+import { queryKeys } from "../lib/queryClient";
+import { getMyQueue, getQueueHistory } from "../services/queueService";
+import { useServices } from "../hooks/useServices";
 
 function Calendar() {
   const { user } = useAuth();
 
-  const [history, setHistory] = useState<QueueEntry[]>([]);
-  const [services, setServices] = useState<Service[]>([]);
-  const [myQueue, setMyQueue] = useState<QueueEntry[]>([]);
+  const myQueueQuery = useQuery({
+    queryKey: queryKeys.myQueue,
+    queryFn: getMyQueue,
+    enabled: Boolean(user),
+  });
 
-  useEffect(() => {
-    if (!user) return;
+  const historyQuery = useQuery({
+    queryKey: queryKeys.queueHistory,
+    queryFn: getQueueHistory,
+    enabled: Boolean(user),
+  });
 
-    let active = true;
+  const servicesQuery = useServices();
 
-    async function loadQueueData() {
-      try {
-        const [activeEntries, historyEntries] = await Promise.all([
-          getMyQueue(),
-          getQueueHistory(),
-        ]);
-
-        if (active) {
-          setMyQueue(activeEntries);
-          setHistory(historyEntries);
-        }
-      } catch (error) {
-        if (active) {
-          console.error("Failed to load queue data:", error);
-        }
-      }
-    }
-
-    void loadQueueData();
-
-    return () => {
-      active = false;
-    };
-  }, [user]);
-
-  useEffect(() => {
-    if (!user) return;
-
-    let active = true;
-
-    getServices()
-      .then((loadedServices) => {
-        if (active) {
-          setServices(loadedServices);
-        }
-      })
-      .catch((error) => {
-        if (active) {
-          console.error("Failed to load services:", error);
-        }
-      });
-
-    return () => {
-      active = false;
-    };
-  }, [user]);
+  const myQueue = myQueueQuery.data ?? [];
+  const history = historyQuery.data ?? [];
+  const services = servicesQuery.data ?? [];
 
   const [currentMonth, setCurrentMonth] = useState(() => new Date());
 
