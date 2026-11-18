@@ -1,6 +1,8 @@
+import type { Priority } from "../models/service";
+
 export type QueueStatus = "waiting" | "almost_ready" | "served" | "cancelled";
 
-export type ServicePriority = "low" | "medium" | "high";
+export type ServicePriority = Priority;
 
 export interface Service {
   id: string;

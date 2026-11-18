@@ -1,10 +1,16 @@
 import { randomUUID } from "node:crypto";
 import { transaction } from "../db/sqlite";
+import { PRIORITY_RANK } from "../models/service";
 import {
   closeQueueIfEmpty,
+  findEntryById,
   insertEntry,
+  listActiveEntries,
+  listActiveEntriesForUser,
+  listClosedEntriesForUser,
   listEntries,
   nextTicketSequence,
+  reprioritize,
   updateEntry,
 } from "../models/queueStore";
 import type {
@@ -13,15 +19,11 @@ import type {
   QueueSummaryRecord,
   ServeNextResult,
   Service,
-  ServicePriority,
   WaitEstimate,
 } from "../types/queue";
 import { maskPatientName } from "../utils/maskName";
 import { HttpError } from "../utils/errors";
-import {
-  estimateWaitForNewJoiner,
-  estimateWaitMinutes,
-} from "../utils/waitTime";
+import { estimateWaitForNewJoiner } from "../utils/waitTime";
 import type { JoinQueueInput } from "../validators/queueValidators";
 import { createNotification } from "./notificationService";
 
@@ -29,12 +31,6 @@ export interface ServiceCatalog {
   list(): Service[] | Promise<Service[]>;
   find(serviceId: string): Service | undefined | Promise<Service | undefined>;
 }
-
-const PRIORITY_RANK: Record<ServicePriority, number> = {
-  low: 0,
-  medium: 1,
-  high: 2,
-};
 
 export function compareEntries(
   a: QueueEntryRecord,
@@ -90,7 +86,7 @@ export class QueueService {
   }
 
   private findEntry(entryId: string): QueueEntryRecord {
-    const entry = listEntries().find((e) => e.id === entryId);
+    const entry = findEntryById(entryId);
     if (!entry) throw new HttpError(404, "Queue entry not found");
     return entry;
   }
@@ -107,38 +103,39 @@ export class QueueService {
   }
 
   private activeEntries(serviceId: string): QueueEntryRecord[] {
-    return this.activeEntriesFrom(listEntries(), serviceId);
+    return listActiveEntries(serviceId);
   }
 
   private refresh(service: Service): void {
-    this.activeEntries(service.id).forEach((entry, index) => {
-      entry.position = index + 1;
-      entry.estimatedWaitMinutes = estimateWaitMinutes(entry.position, service);
-      entry.status = entry.position === 1 ? "almost_ready" : "waiting";
-      updateEntry(entry);
-    });
+    reprioritize(service.id, service.expectedDuration);
   }
 
   private summarize(service: Service): QueueSummaryRecord {
-    return this.summarizeFrom(listEntries(), service);
+    return this.summarizeWaitlist(this.activeEntries(service.id), service);
+  }
+
+  private summarizeWaitlist(
+    waitingList: QueueEntryRecord[],
+    service: Service,
+  ): QueueSummaryRecord {
+    const copied = waitingList.map((entry) => ({ ...entry }));
+    const lastEntry = copied[copied.length - 1];
+    return {
+      service: { ...service },
+      waitingCount: copied.length,
+      estimatedWaitMinutes: lastEntry ? lastEntry.estimatedWaitMinutes : 0,
+      waitingList: copied,
+    };
   }
 
   private summarizeFrom(
     entries: readonly QueueEntryRecord[],
     service: Service,
   ): QueueSummaryRecord {
-    const waitingList = this.activeEntriesFrom(entries, service.id).map(
-      (e) => ({
-        ...e,
-      }),
+    return this.summarizeWaitlist(
+      this.activeEntriesFrom(entries, service.id),
+      service,
     );
-    const lastEntry = waitingList[waitingList.length - 1];
-    return {
-      service: { ...service },
-      waitingCount: waitingList.length,
-      estimatedWaitMinutes: lastEntry ? lastEntry.estimatedWaitMinutes : 0,
-      waitingList,
-    };
   }
 
   async join(userId: string, input: JoinQueueInput): Promise<QueueEntryRecord> {
@@ -244,23 +241,11 @@ export class QueueService {
   }
 
   listForUser(userId: string): QueueEntryRecord[] {
-    return listEntries()
-      .filter((e) => e.userId === userId && isActive(e))
-      .sort(
-        (a, b) =>
-          new Date(a.joinedAt).getTime() - new Date(b.joinedAt).getTime(),
-      )
-      .map((e) => ({ ...e }));
+    return listActiveEntriesForUser(userId).map((entry) => ({ ...entry }));
   }
 
   getHistoryForUser(userId: string): QueueEntryRecord[] {
-    return listEntries()
-      .filter((entry) => entry.userId === userId && !isActive(entry))
-      .sort(
-        (a, b) =>
-          new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
-      )
-      .map((entry) => ({ ...entry }));
+    return listClosedEntriesForUser(userId).map((entry) => ({ ...entry }));
   }
 
   async getWaitEstimate(serviceId: string): Promise<WaitEstimate> {

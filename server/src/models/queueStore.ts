@@ -19,6 +19,13 @@ type QueueEntryRow = Record<string, unknown> & {
   ticket_number: string;
 };
 
+const PRIORITY_RANK_SQL = `
+  CASE priority
+    WHEN 'high' THEN 2
+    WHEN 'medium' THEN 1
+    ELSE 0
+  END`;
+
 function mapEntry(row: QueueEntryRow): QueueEntryRecord {
   return {
     id: row.id,
@@ -45,8 +52,53 @@ const SELECT_ENTRIES = `
   FROM queue_entries
 `;
 
+const ACTIVE_STATUSES = "('waiting', 'almost_ready')";
+
 export function listEntries(): QueueEntryRecord[] {
   return (db.prepare(SELECT_ENTRIES).all() as QueueEntryRow[]).map(mapEntry);
+}
+
+export function listActiveEntries(serviceId: string): QueueEntryRecord[] {
+  const rows = db
+    .prepare(
+      `${SELECT_ENTRIES}
+       WHERE service_id = ? AND status IN ${ACTIVE_STATUSES}
+       ORDER BY ${PRIORITY_RANK_SQL} DESC, joined_at ASC, rowid ASC`,
+    )
+    .all(serviceId) as QueueEntryRow[];
+
+  return rows.map(mapEntry);
+}
+
+export function findEntryById(entryId: string): QueueEntryRecord | undefined {
+  const row = db.prepare(`${SELECT_ENTRIES} WHERE id = ?`).get(entryId) as
+    QueueEntryRow | undefined;
+
+  return row ? mapEntry(row) : undefined;
+}
+
+export function listActiveEntriesForUser(userId: string): QueueEntryRecord[] {
+  const rows = db
+    .prepare(
+      `${SELECT_ENTRIES}
+       WHERE user_id = ? AND status IN ${ACTIVE_STATUSES}
+       ORDER BY joined_at ASC, rowid ASC`,
+    )
+    .all(userId) as QueueEntryRow[];
+
+  return rows.map(mapEntry);
+}
+
+export function listClosedEntriesForUser(userId: string): QueueEntryRecord[] {
+  const rows = db
+    .prepare(
+      `${SELECT_ENTRIES}
+       WHERE user_id = ? AND status NOT IN ${ACTIVE_STATUSES}
+       ORDER BY updated_at DESC, rowid DESC`,
+    )
+    .all(userId) as QueueEntryRow[];
+
+  return rows.map(mapEntry);
 }
 
 export function insertEntry(entry: QueueEntryRecord): void {
@@ -98,6 +150,27 @@ export function updateEntry(entry: QueueEntryRecord): void {
     entry.updatedAt,
     entry.id,
   );
+}
+
+export function reprioritize(
+  serviceId: string,
+  expectedDuration: number,
+): void {
+  db.prepare(
+    `UPDATE queue_entries
+     SET position = ranked.position,
+         estimated_wait_minutes = ranked.position * ?,
+         status = CASE WHEN ranked.position = 1 THEN 'almost_ready' ELSE 'waiting' END
+     FROM (
+       SELECT id AS entry_id,
+              ROW_NUMBER() OVER (
+                ORDER BY ${PRIORITY_RANK_SQL} DESC, joined_at ASC, rowid ASC
+              ) AS position
+       FROM queue_entries
+       WHERE service_id = ? AND status IN ('waiting', 'almost_ready')
+     ) AS ranked
+     WHERE queue_entries.id = ranked.entry_id`,
+  ).run(expectedDuration, serviceId);
 }
 
 export function closeQueueIfEmpty(serviceId: string): void {

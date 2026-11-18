@@ -1,7 +1,24 @@
 import type { Request, Response } from "express";
 import { ServiceService } from "../services/serviceService";
 
+const INVALID_ID = "Service ID must be a positive integer.";
+
 export function createServiceController(serviceService: ServiceService) {
+  function fail(res: Response, status: number, errors: string[]): void {
+    res.status(status).json({ success: false, errors });
+  }
+
+  function readServiceId(req: Request, res: Response): number | null {
+    const id = Number(req.params.id);
+
+    if (!Number.isSafeInteger(id) || id <= 0) {
+      fail(res, 400, [INVALID_ID]);
+      return null;
+    }
+
+    return id;
+  }
+
   function listServices(_req: Request, res: Response): void {
     res.status(200).json({
       success: true,
@@ -18,34 +35,21 @@ export function createServiceController(serviceService: ServiceService) {
         data: service,
       });
     } catch (error: unknown) {
-      res.status(400).json({
-        success: false,
-        errors: [
-          error instanceof Error ? error.message : "Invalid service input.",
-        ],
-      });
+      fail(res, 400, [
+        error instanceof Error ? error.message : "Invalid service input.",
+      ]);
     }
   }
 
   function updateService(req: Request, res: Response): void {
-    const id = Number(req.params.id);
-
-    if (!Number.isSafeInteger(id) || id <= 0) {
-      res.status(400).json({
-        success: false,
-        errors: ["Service ID must be a positive integer."],
-      });
-      return;
-    }
+    const id = readServiceId(req, res);
+    if (id === null) return;
 
     try {
       const service = serviceService.updateService(id, req.body);
 
       if (!service) {
-        res.status(404).json({
-          success: false,
-          errors: ["Service not found."],
-        });
+        fail(res, 404, ["Service not found."]);
         return;
       }
 
@@ -54,44 +58,28 @@ export function createServiceController(serviceService: ServiceService) {
         data: service,
       });
     } catch (error: unknown) {
-      res.status(400).json({
-        success: false,
-        errors: [
-          error instanceof Error ? error.message : "Invalid service input.",
-        ],
-      });
+      fail(res, 400, [
+        error instanceof Error ? error.message : "Invalid service input.",
+      ]);
     }
   }
 
   function setServiceAvailability(req: Request, res: Response): void {
-    const id = Number(req.params.id);
-
-    if (!Number.isSafeInteger(id) || id <= 0) {
-      res.status(400).json({
-        success: false,
-        errors: ["Service ID must be a positive integer."],
-      });
-      return;
-    }
+    const id = readServiceId(req, res);
+    if (id === null) return;
 
     const body = req.body as { isAvailable?: unknown } | null;
     const isAvailable = body?.isAvailable;
 
     if (typeof isAvailable !== "boolean") {
-      res.status(400).json({
-        success: false,
-        errors: ["isAvailable must be a boolean."],
-      });
+      fail(res, 400, ["isAvailable must be a boolean."]);
       return;
     }
 
     const service = serviceService.setAvailability(id, isAvailable);
 
     if (!service) {
-      res.status(404).json({
-        success: false,
-        errors: ["Service not found."],
-      });
+      fail(res, 404, ["Service not found."]);
       return;
     }
 
@@ -102,23 +90,13 @@ export function createServiceController(serviceService: ServiceService) {
   }
 
   function removeService(req: Request, res: Response): void {
-    const id = Number(req.params.id);
-
-    if (!Number.isSafeInteger(id) || id <= 0) {
-      res.status(400).json({
-        success: false,
-        errors: ["Service ID must be a positive integer."],
-      });
-      return;
-    }
+    const id = readServiceId(req, res);
+    if (id === null) return;
 
     const removed = serviceService.removeService(id);
 
     if (!removed) {
-      res.status(404).json({
-        success: false,
-        errors: ["Service not found."],
-      });
+      fail(res, 404, ["Service not found."]);
       return;
     }
 

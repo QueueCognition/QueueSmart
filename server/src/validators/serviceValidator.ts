@@ -1,4 +1,4 @@
-import type { Priority } from "../models/service";
+import { isPriority, type Priority } from "../models/service";
 
 export interface ServiceInput {
   name: string;
@@ -44,11 +44,7 @@ export function validateServiceInput(input: unknown): ValidationResult {
     errors.push("Duration must be a positive number.");
   }
 
-  if (
-    data.priority !== "low" &&
-    data.priority !== "medium" &&
-    data.priority !== "high"
-  ) {
+  if (!isPriority(data.priority)) {
     errors.push("Priority must be low, medium, or high.");
   }
 
