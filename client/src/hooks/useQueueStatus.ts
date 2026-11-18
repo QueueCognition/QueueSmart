@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import type { QueueEntry } from "../types/queue";
+import { describeApiError } from "../services/apiClient";
 import { getMyQueue } from "../services/queueService";
 
 export function useQueueStatus() {
@@ -24,9 +25,7 @@ export function useQueueStatus() {
       } catch (cause) {
         if (active) {
           setError(
-            cause instanceof Error
-              ? cause.message
-              : "Failed to load your queue status.",
+            describeApiError(cause, "Failed to load your queue status."),
           );
           setLoading(false);
         }

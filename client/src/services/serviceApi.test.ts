@@ -1,27 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import * as serviceApi from "../services/serviceApi";
-
-type Call = { url: string; init: RequestInit };
-
-function jsonResponse(body: unknown, status = 200): Response {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { "Content-Type": "application/json" },
-  });
-}
-
-function mockFetch(handler: (call: Call) => Response) {
-  const calls: Call[] = [];
-  vi.stubGlobal(
-    "fetch",
-    vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
-      const call = { url: String(input), init: init ?? {} };
-      calls.push(call);
-      return handler(call);
-    }),
-  );
-  return calls;
-}
+import { jsonResponse, mockFetch } from "../test/fetchMock";
 
 const SERVICE = {
   id: 3,
@@ -73,9 +52,7 @@ describe("serviceApi", () => {
     await serviceApi.setServiceAvailability(3, false);
 
     expect(calls[0].url).toMatch(/\/services\/3\/availability$/);
-    expect(calls[0].init.method).toBe("PATCH");
-    expect(JSON.parse(String(calls[0].init.body))).toEqual({
-      isAvailable: false,
-    });
+    expect(calls[0].method).toBe("PATCH");
+    expect(JSON.parse(calls[0].body)).toEqual({ isAvailable: false });
   });
 });

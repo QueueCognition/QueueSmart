@@ -1,28 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AuthError } from "../services/authError";
+import { describeApiError } from "../services/apiClient";
 import * as queueService from "../services/queueService";
-
-type Call = { url: string; init: RequestInit };
-
-function jsonResponse(body: unknown, status = 200): Response {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { "Content-Type": "application/json" },
-  });
-}
-
-function mockFetch(handler: (call: Call) => Response) {
-  const calls: Call[] = [];
-  vi.stubGlobal(
-    "fetch",
-    vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
-      const call = { url: String(input), init: init ?? {} };
-      calls.push(call);
-      return handler(call);
-    }),
-  );
-  return calls;
-}
+import { jsonResponse, mockFetch } from "../test/fetchMock";
 
 const ENTRY = {
   id: "e1",
@@ -49,7 +29,7 @@ describe("queueService", () => {
   });
 
   it("posts a join request and attaches the stored token", async () => {
-    const calls = mockFetch(() => jsonResponse(ENTRY, 201));
+    const calls = mockFetch(() => jsonResponse(ENTRY));
 
     const entry = await queueService.joinQueue({
       serviceId: "1",
@@ -61,10 +41,8 @@ describe("queueService", () => {
 
     expect(entry.position).toBe(2);
     expect(calls[0].url).toMatch(/\/queue\/join$/);
-    expect(calls[0].init.method).toBe("POST");
-    expect(new Headers(calls[0].init.headers).get("Authorization")).toBe(
-      "Bearer queue-token",
-    );
+    expect(calls[0].method).toBe("POST");
+    expect(calls[0].headers.get("Authorization")).toBe("Bearer queue-token");
   });
 
   it("encodes ids in queue paths", async () => {
@@ -98,15 +76,16 @@ describe("queueService", () => {
 
     expect(error).toBeInstanceOf(AuthError);
     expect((error as AuthError).status).toBe(400);
-    expect((error as AuthError).message).toBe(
-      "Invalid request data timeSlot: Pick a slot",
-    );
+    expect((error as AuthError).message).toBe("Invalid request data");
     expect((error as AuthError).fieldErrors).toEqual({
       timeSlot: "Pick a slot",
     });
+    expect(describeApiError(error, "failed")).toBe(
+      "Invalid request data timeSlot: Pick a slot",
+    );
   });
 
-  it("truncates non-204 bodies through the admin queue endpoint", async () => {
+  it("reads the admin queue endpoint", async () => {
     const calls = mockFetch(() =>
       jsonResponse([{ service: {}, waitingCount: 0, waitingList: [] }]),
     );
@@ -114,5 +93,36 @@ describe("queueService", () => {
     await queueService.getAdminServiceWaitSummaries();
 
     expect(calls[0].url).toMatch(/\/admin\/queues$/);
+  });
+
+  it("maps the service envelope into queue services", async () => {
+    mockFetch(() =>
+      jsonResponse({
+        success: true,
+        data: [
+          {
+            id: 7,
+            name: "Dentist",
+            description: "Checkup",
+            duration: 30,
+            priority: "high",
+            isAvailable: true,
+          },
+        ],
+      }),
+    );
+
+    const services = await queueService.getServices();
+
+    expect(services).toEqual([
+      {
+        id: "7",
+        name: "Dentist",
+        description: "Checkup",
+        expectedDuration: 30,
+        priority: "high",
+        isAvailable: true,
+      },
+    ]);
   });
 });

@@ -5,16 +5,8 @@ import type {
   Service,
   WaitEstimate,
 } from "../types/queue";
-import { getStoredAccessToken } from "./authService";
-import { AuthError } from "./authError";
+import { apiDelete, apiGet, apiPost } from "./apiClient";
 import { getServices as getManagedServices } from "./serviceApi";
-
-const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "/api").replace(
-  /\/$/,
-  "",
-);
-const QUEUE_URL = `${API_BASE_URL}/queue`;
-const ADMIN_QUEUE_URL = `${API_BASE_URL}/admin/queues`;
 
 export interface JoinQueueInput {
   serviceId: string;
@@ -24,80 +16,12 @@ export interface JoinQueueInput {
   timeSlot: string;
 }
 
-interface ApiErrorPayload {
-  message?: unknown;
-  fieldErrors?: Record<string, unknown>;
-}
-
-function readFieldErrors(value: unknown): Record<string, string> {
-  if (typeof value !== "object" || value === null) return {};
-
-  const fieldErrors: Record<string, string> = {};
-  for (const [key, entry] of Object.entries(value)) {
-    if (typeof entry === "string") fieldErrors[key] = entry;
-  }
-
-  return fieldErrors;
-}
-
-async function request<T>(
-  baseUrl: string,
-  path: string,
-  init: RequestInit = {},
-): Promise<T> {
-  const headers = new Headers(init.headers);
-  if (init.body !== undefined) headers.set("Content-Type", "application/json");
-
-  const token = getStoredAccessToken();
-  if (token) headers.set("Authorization", `Bearer ${token}`);
-
-  let response: Response;
-  try {
-    response = await fetch(`${baseUrl}${path}`, { ...init, headers });
-  } catch {
-    throw new AuthError("Unable to reach the server. Please try again.", 0);
-  }
-
-  if (response.status === 204) return undefined as T;
-
-  let payload: unknown;
-  try {
-    payload = await response.json();
-  } catch {
-    throw new AuthError(
-      response.ok
-        ? "The server returned an invalid response."
-        : `The request failed with status ${response.status}.`,
-      response.status,
-    );
-  }
-
-  if (!response.ok) {
-    const error =
-      typeof payload === "object" && payload !== null
-        ? (payload as ApiErrorPayload)
-        : {};
-    const message =
-      typeof error.message === "string" && error.message.trim()
-        ? error.message
-        : `The request failed with status ${response.status}.`;
-    const fieldErrors = readFieldErrors(error.fieldErrors);
-    const details = Object.entries(fieldErrors)
-      .map(([field, value]) => `${field}: ${value}`)
-      .join(" ");
-
-    throw new AuthError(
-      details ? `${message} ${details}` : message,
-      response.status,
-      fieldErrors,
-    );
-  }
-
-  return payload as T;
-}
+const QUEUE_PATH = "queue";
+const ADMIN_QUEUE_PATH = "admin/queues";
 
 export async function getServices(): Promise<Service[]> {
   const services = await getManagedServices();
+
   return services.map((service) => ({
     id: String(service.id),
     name: service.name,
@@ -109,57 +33,52 @@ export async function getServices(): Promise<Service[]> {
 }
 
 export function joinQueue(input: JoinQueueInput): Promise<QueueEntry> {
-  return request<QueueEntry>(QUEUE_URL, "/join", {
-    method: "POST",
-    body: JSON.stringify(input),
+  return apiPost<QueueEntry>(`${QUEUE_PATH}/join`, {
+    json: input,
+    retry: 0,
   });
 }
 
 export function getQueueStatus(entryId: string): Promise<QueueEntry> {
-  return request<QueueEntry>(QUEUE_URL, `/${encodeURIComponent(entryId)}`);
+  return apiGet<QueueEntry>(`${QUEUE_PATH}/${encodeURIComponent(entryId)}`);
 }
 
 export function getMyQueue(): Promise<QueueEntry[]> {
-  return request<QueueEntry[]>(QUEUE_URL, "/mine");
+  return apiGet<QueueEntry[]>(`${QUEUE_PATH}/mine`);
 }
 
 export function getQueueHistory(): Promise<QueueEntry[]> {
-  return request<QueueEntry[]>(QUEUE_URL, "/history");
+  return apiGet<QueueEntry[]>(`${QUEUE_PATH}/history`);
 }
 
 export function leaveQueue(entryId: string): Promise<QueueEntry> {
-  return request<QueueEntry>(QUEUE_URL, `/${encodeURIComponent(entryId)}`, {
-    method: "DELETE",
-  });
+  return apiDelete<QueueEntry>(`${QUEUE_PATH}/${encodeURIComponent(entryId)}`);
 }
 
 export function getWaitEstimate(serviceId: string): Promise<WaitEstimate> {
-  return request<WaitEstimate>(
-    QUEUE_URL,
-    `/wait-time/${encodeURIComponent(serviceId)}`,
+  return apiGet<WaitEstimate>(
+    `${QUEUE_PATH}/wait-time/${encodeURIComponent(serviceId)}`,
   );
 }
 
 export function getPublicQueueBoard(
   serviceId: string,
 ): Promise<PublicQueueRow[]> {
-  return request<PublicQueueRow[]>(
-    QUEUE_URL,
-    `/board/${encodeURIComponent(serviceId)}`,
+  return apiGet<PublicQueueRow[]>(
+    `${QUEUE_PATH}/board/${encodeURIComponent(serviceId)}`,
   );
 }
 
 export function getAdminServiceWaitSummaries(): Promise<QueueServiceSummary[]> {
-  return request<QueueServiceSummary[]>(ADMIN_QUEUE_URL, "");
+  return apiGet<QueueServiceSummary[]>(ADMIN_QUEUE_PATH);
 }
 
 export function serveNext(serviceId: string): Promise<{
   served: QueueEntry;
   nextUp: QueueEntry | null;
 }> {
-  return request(
-    ADMIN_QUEUE_URL,
-    `/${encodeURIComponent(serviceId)}/serve-next`,
-    { method: "POST" },
+  return apiPost(
+    `${ADMIN_QUEUE_PATH}/${encodeURIComponent(serviceId)}/serve-next`,
+    { retry: 0 },
   );
 }

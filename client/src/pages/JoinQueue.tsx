@@ -9,6 +9,7 @@ import {
   leaveQueue,
 } from "../services/queueService";
 import type { WaitEstimate } from "../types/queue";
+import { describeApiError } from "../services/apiClient";
 import { useAuth } from "../context/AuthContext";
 import { Link } from "react-router-dom";
 
@@ -45,9 +46,7 @@ function JoinQueue() {
       })
       .catch((error: unknown) => {
         if (active) {
-          setFormError(
-            error instanceof Error ? error.message : "Failed to load services.",
-          );
+          setFormError(describeApiError(error, "Failed to load services."));
         }
       });
     return () => {
@@ -65,11 +64,7 @@ function JoinQueue() {
       })
       .catch((error: unknown) => {
         if (active) {
-          setFormError(
-            error instanceof Error
-              ? error.message
-              : "Failed to load your queue.",
-          );
+          setFormError(describeApiError(error, "Failed to load your queue."));
         }
       });
     return () => {
@@ -91,9 +86,7 @@ function JoinQueue() {
         if (active) {
           setWaitEstimate(null);
           setFormError(
-            error instanceof Error
-              ? error.message
-              : "Failed to load the wait estimate.",
+            describeApiError(error, "Failed to load the wait estimate."),
           );
         }
       });
@@ -147,9 +140,7 @@ function JoinQueue() {
       setDate("");
       setTimeSlot("");
     } catch (error) {
-      setFormError(
-        error instanceof Error ? error.message : "Failed to join the queue.",
-      );
+      setFormError(describeApiError(error, "Failed to join the queue."));
     } finally {
       setSubmitting(false);
     }
@@ -165,9 +156,7 @@ function JoinQueue() {
       await leaveQueue(entry.id);
       setMyQueue((current) => current.filter((item) => item.id !== entry.id));
     } catch (error) {
-      setFormError(
-        error instanceof Error ? error.message : "Failed to leave the queue.",
-      );
+      setFormError(describeApiError(error, "Failed to leave the queue."));
     }
   }
 

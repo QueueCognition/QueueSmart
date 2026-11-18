@@ -2,6 +2,7 @@ import "../styles/queuestatus.css";
 import { useEffect, useState } from "react";
 import { useQueueStatus } from "../hooks/useQueueStatus";
 import { useAuth } from "../context/AuthContext";
+import { describeApiError } from "../services/apiClient";
 import { getPublicQueueBoard, getServices } from "../services/queueService";
 import type { PublicQueueRow, Service } from "../types/queue";
 
@@ -30,9 +31,7 @@ function QueueStatus() {
       })
       .catch((error: unknown) => {
         if (active) {
-          setBoardError(
-            error instanceof Error ? error.message : "Failed to load services.",
-          );
+          setBoardError(describeApiError(error, "Failed to load services."));
         }
       });
     return () => {
@@ -56,11 +55,7 @@ function QueueStatus() {
         }
       } catch (error) {
         if (active) {
-          setBoardError(
-            error instanceof Error
-              ? error.message
-              : "Failed to load the queue.",
-          );
+          setBoardError(describeApiError(error, "Failed to load the queue."));
           setBoardLoadedFor(boardServiceId);
         }
       }

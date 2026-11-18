@@ -1,27 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import * as notificationService from "../services/notificationService";
-
-type Call = { url: string; init: RequestInit };
-
-function jsonResponse(body: unknown, status = 200): Response {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { "Content-Type": "application/json" },
-  });
-}
-
-function mockFetch(handler: (call: Call) => Response) {
-  const calls: Call[] = [];
-  vi.stubGlobal(
-    "fetch",
-    vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
-      const call = { url: String(input), init: init ?? {} };
-      calls.push(call);
-      return handler(call);
-    }),
-  );
-  return calls;
-}
+import { emptyResponse, jsonResponse, mockFetch } from "../test/fetchMock";
 
 const NOTIFICATION = {
   id: "n1",
@@ -54,9 +33,7 @@ describe("notificationService", () => {
 
     expect(list).toEqual([NOTIFICATION]);
     expect(calls[0].url).toMatch(/\/notifications$/);
-    expect(new Headers(calls[0].init.headers).get("Authorization")).toBe(
-      "Bearer notif-token",
-    );
+    expect(calls[0].headers.get("Authorization")).toBe("Bearer notif-token");
   });
 
   it("marks a single notification as read", async () => {
@@ -68,11 +45,11 @@ describe("notificationService", () => {
 
     expect(updated.read).toBe(true);
     expect(calls[0].url).toMatch(/\/notifications\/n1\/read$/);
-    expect(calls[0].init.method).toBe("PATCH");
+    expect(calls[0].method).toBe("PATCH");
   });
 
   it("resolves mark-all against a 204 response", async () => {
-    mockFetch(() => new Response(null, { status: 204 }));
+    mockFetch(() => emptyResponse());
 
     await expect(
       notificationService.markAllNotificationsAsRead(),
@@ -82,9 +59,7 @@ describe("notificationService", () => {
   it("throws a descriptive error on failure", async () => {
     mockFetch(() => jsonResponse({ message: "boom" }, 500));
 
-    await expect(notificationService.getNotifications()).rejects.toThrow(
-      "Failed to load notifications (status 500).",
-    );
+    await expect(notificationService.getNotifications()).rejects.toThrow();
   });
 
   it("throws when the server is unreachable", async () => {

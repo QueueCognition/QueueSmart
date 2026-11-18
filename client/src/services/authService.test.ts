@@ -1,26 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AuthError } from "../services/authError";
 import * as authService from "../services/authService";
-
-type Call = { url: string; init: RequestInit };
-
-function jsonResponse(body: unknown, status = 200): Response {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { "Content-Type": "application/json" },
-  });
-}
-
-function mockFetch(handler: (call: Call) => Response) {
-  const calls: Call[] = [];
-  const stub = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
-    const call = { url: String(input), init: init ?? {} };
-    calls.push(call);
-    return handler(call);
-  });
-  vi.stubGlobal("fetch", stub);
-  return calls;
-}
+import { emptyResponse, jsonResponse, mockFetch } from "../test/fetchMock";
 
 const SESSION = {
   user: {
@@ -65,14 +46,12 @@ describe("authService", () => {
     expect(session.token).toBe("token-123");
     expect(calls).toHaveLength(1);
     expect(calls[0].url).toMatch(/\/auth\/login$/);
-    expect(calls[0].init.method).toBe("POST");
-    expect(JSON.parse(String(calls[0].init.body))).toEqual({
+    expect(calls[0].method).toBe("POST");
+    expect(calls[0].headers.get("Content-Type")).toBe("application/json");
+    expect(JSON.parse(calls[0].body)).toEqual({
       email: "ada@example.com",
       password: "secret123",
     });
-    expect(new Headers(calls[0].init.headers).get("Content-Type")).toBe(
-      "application/json",
-    );
   });
 
   it("sends a bearer token for authenticated profile reads", async () => {
@@ -85,9 +64,7 @@ describe("authService", () => {
     await authService.getProfile();
 
     expect(calls[0].url).toMatch(/\/auth\/profile$/);
-    expect(new Headers(calls[0].init.headers).get("Authorization")).toBe(
-      "Bearer stored-token",
-    );
+    expect(calls[0].headers.get("Authorization")).toBe("Bearer stored-token");
   });
 
   it("maps error payloads onto AuthError with field errors", async () => {
@@ -139,7 +116,7 @@ describe("authService", () => {
   });
 
   it("returns undefined for 204 responses", async () => {
-    mockFetch(() => new Response(null, { status: 204 }));
+    mockFetch(() => emptyResponse());
 
     await expect(authService.logout()).resolves.toBeUndefined();
   });

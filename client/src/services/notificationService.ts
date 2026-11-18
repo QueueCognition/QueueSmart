@@ -1,74 +1,21 @@
 import type { Notification } from "../types/queue";
-import { getStoredAccessToken } from "./authService";
+import { apiGet, apiPatch } from "./apiClient";
 
-const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "/api").replace(
-  /\/$/,
-  "",
-);
+const NOTIFICATION_PATH = "notifications";
 
-const NOTIFICATION_URL = `${API_BASE_URL}/notifications`;
-
-export async function getNotifications(): Promise<Notification[]> {
-  const headers = new Headers();
-  const token = getStoredAccessToken();
-
-  if (token) {
-    headers.set("Authorization", `Bearer ${token}`);
-  }
-
-  let response: Response;
-
-  try {
-    response = await fetch(NOTIFICATION_URL, { headers });
-  } catch {
-    throw new Error("Unable to reach the server. Please try again.");
-  }
-
-  if (!response.ok) {
-    throw new Error(
-      `Failed to load notifications (status ${response.status}).`,
-    );
-  }
-
-  return (await response.json()) as Notification[];
+export function getNotifications(): Promise<Notification[]> {
+  return apiGet<Notification[]>(NOTIFICATION_PATH);
 }
 
-export async function markNotificationAsRead(
+export function markNotificationAsRead(
   notificationId: string,
 ): Promise<Notification> {
-  const headers = new Headers();
-  const token = getStoredAccessToken();
-
-  if (token) {
-    headers.set("Authorization", `Bearer ${token}`);
-  }
-
-  const response = await fetch(
-    `${NOTIFICATION_URL}/${encodeURIComponent(notificationId)}/read`,
-    { method: "PATCH", headers },
+  return apiPatch<Notification>(
+    `${NOTIFICATION_PATH}/${encodeURIComponent(notificationId)}/read`,
+    { retry: 0 },
   );
-
-  if (!response.ok) {
-    throw new Error("Failed to mark notification as read.");
-  }
-
-  return (await response.json()) as Notification;
 }
 
-export async function markAllNotificationsAsRead(): Promise<void> {
-  const headers = new Headers();
-  const token = getStoredAccessToken();
-
-  if (token) {
-    headers.set("Authorization", `Bearer ${token}`);
-  }
-
-  const response = await fetch(`${NOTIFICATION_URL}/read`, {
-    method: "PATCH",
-    headers,
-  });
-
-  if (!response.ok) {
-    throw new Error("Failed to mark notifications as read.");
-  }
+export function markAllNotificationsAsRead(): Promise<void> {
+  return apiPatch<void>(`${NOTIFICATION_PATH}/read`, { retry: 0 });
 }

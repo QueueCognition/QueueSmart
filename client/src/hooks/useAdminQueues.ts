@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useAuth } from "../context/AuthContext";
+import { describeApiError } from "../services/apiClient";
 import { AuthError } from "../services/authError";
 import {
   getAdminServiceWaitSummaries,
-  serveNextInQueue,
-  type AdminServiceQueueSummary,
-} from "../services/adminQueueService";
-import type { QueueEntry } from "../types/queue";
+  serveNext as serveNextEntry,
+} from "../services/queueService";
+import type { QueueEntry, QueueServiceSummary } from "../types/queue";
 
 const REFRESH_INTERVAL_MS = 5000;
 const SESSION_EXPIRED_NOTICE = "Your session expired. Please sign in again.";
@@ -17,7 +17,7 @@ export interface ServeNextOutcome {
 }
 
 export interface UseAdminQueuesResult {
-  summaries: AdminServiceQueueSummary[];
+  summaries: QueueServiceSummary[];
   loading: boolean;
   error: string;
   lastRefreshed: Date | null;
@@ -26,13 +26,9 @@ export interface UseAdminQueuesResult {
   serveNext: (serviceId: string) => Promise<ServeNextOutcome | null>;
 }
 
-function messageFor(error: unknown, fallback: string): string {
-  return error instanceof Error && error.message ? error.message : fallback;
-}
-
 export function useAdminQueues(): UseAdminQueuesResult {
   const { logout } = useAuth();
-  const [summaries, setSummaries] = useState<AdminServiceQueueSummary[]>([]);
+  const [summaries, setSummaries] = useState<QueueServiceSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [lastRefreshed, setLastRefreshed] = useState<Date | null>(null);
@@ -59,7 +55,7 @@ export function useAdminQueues(): UseAdminQueuesResult {
       }
 
       if (!mounted.current) return;
-      setError(messageFor(cause, fallback));
+      setError(describeApiError(cause, fallback));
     },
     [logout],
   );
@@ -97,7 +93,7 @@ export function useAdminQueues(): UseAdminQueuesResult {
       servingRef.current = serviceId;
       setServingServiceId(serviceId);
       try {
-        const outcome = await serveNextInQueue(serviceId);
+        const outcome = await serveNextEntry(serviceId);
         sync();
         return outcome;
       } catch (cause) {
