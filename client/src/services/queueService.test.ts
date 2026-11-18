@@ -46,11 +46,11 @@ describe("queueService", () => {
   });
 
   it("encodes ids in queue paths", async () => {
-    const calls = mockFetch(() => jsonResponse(ENTRY));
+    const calls = mockFetch(() => jsonResponse({ estimatedWaitMinutes: 5 }));
 
-    await queueService.getQueueStatus("a/b c");
+    await queueService.getWaitEstimate("a/b c");
 
-    expect(calls[0].url).toMatch(/\/queue\/a%2Fb%20c$/);
+    expect(calls[0].url).toMatch(/\/queue\/wait-time\/a%2Fb%20c$/);
   });
 
   it("maps message and field errors onto AuthError", async () => {

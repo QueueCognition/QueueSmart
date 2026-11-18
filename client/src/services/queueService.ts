@@ -39,10 +39,6 @@ export function joinQueue(input: JoinQueueInput): Promise<QueueEntry> {
   });
 }
 
-export function getQueueStatus(entryId: string): Promise<QueueEntry> {
-  return apiGet<QueueEntry>(`${QUEUE_PATH}/${encodeURIComponent(entryId)}`);
-}
-
 export function getMyQueue(): Promise<QueueEntry[]> {
   return apiGet<QueueEntry[]>(`${QUEUE_PATH}/mine`);
 }
