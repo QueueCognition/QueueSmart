@@ -1,10 +1,21 @@
+import {
+  differenceInDays,
+  differenceInHours,
+  differenceInMinutes,
+} from "date-fns";
+
 export function timeAgo(iso: string): string {
-  const seconds = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
-  if (seconds < 60) return "Just now";
-  const minutes = Math.floor(seconds / 60);
+  const then = new Date(iso);
+  const now = new Date();
+
+  const minutes = differenceInMinutes(now, then);
+  if (minutes < 1) return "Just now";
+
   if (minutes < 60) return `${minutes} min ago`;
-  const hours = Math.floor(minutes / 60);
+
+  const hours = differenceInHours(now, then);
   if (hours < 24) return `${hours} hr ago`;
-  const days = Math.floor(hours / 24);
+
+  const days = differenceInDays(now, then);
   return `${days} day${days > 1 ? "s" : ""} ago`;
 }

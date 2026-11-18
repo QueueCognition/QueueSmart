@@ -6,165 +6,74 @@ import type {
   RegisterDetails,
   User,
 } from "../types/auth";
-import { AuthError } from "./authError";
+import { apiGet, apiPatch, apiPost } from "./apiClient";
+import { AUTH_SESSION_STORAGE_KEY } from "./session";
 
-export { AuthError } from "./authError";
+export { AuthError } from "./apiError";
+export { AUTH_SESSION_STORAGE_KEY };
 
-export const API_BASE_URL: string = (
-  import.meta.env.VITE_API_BASE_URL || "/api"
-).replace(/\/$/, "");
-
-const AUTH_BASE_URL = `${API_BASE_URL}/auth`;
-
-export const AUTH_SESSION_STORAGE_KEY = "queuesmart.auth.session";
-
-export function getStoredAccessToken(): string | null {
-  const raw =
-    localStorage.getItem(AUTH_SESSION_STORAGE_KEY) ??
-    sessionStorage.getItem(AUTH_SESSION_STORAGE_KEY);
-  if (!raw) return null;
-
-  try {
-    const session = JSON.parse(raw) as Partial<AuthSession>;
-    return typeof session.token === "string" ? session.token : null;
-  } catch {
-    return null;
-  }
-}
-
-interface ErrorPayload {
-  message?: unknown;
-  fieldErrors?: unknown;
-}
-
-function withJsonHeaders(init: RequestInit): RequestInit {
-  const headers = new Headers(init.headers);
-  if (init.body !== undefined) headers.set("Content-Type", "application/json");
-
-  return { ...init, headers };
-}
-
-function readFieldErrors(value: unknown): Record<string, string> {
-  if (typeof value !== "object" || value === null) return {};
-
-  const fieldErrors: Record<string, string> = {};
-  for (const [key, entry] of Object.entries(value)) {
-    if (typeof entry === "string") fieldErrors[key] = entry;
-  }
-
-  return fieldErrors;
-}
-
-async function readErrorPayload(
-  response: Response,
-): Promise<{ message: string; fieldErrors: Record<string, string> }> {
-  const fallback = "Something went wrong. Please try again.";
-
-  try {
-    const payload = (await response.json()) as ErrorPayload;
-    const message =
-      typeof payload.message === "string" && payload.message.trim()
-        ? payload.message
-        : fallback;
-
-    return { message, fieldErrors: readFieldErrors(payload.fieldErrors) };
-  } catch {
-    return { message: fallback, fieldErrors: {} };
-  }
-}
-
-async function request<T>(path: string, init: RequestInit): Promise<T> {
-  let response: Response;
-
-  try {
-    response = await fetch(`${AUTH_BASE_URL}${path}`, withJsonHeaders(init));
-  } catch {
-    throw new AuthError("Unable to reach the server. Please try again.", 0);
-  }
-
-  if (!response.ok) {
-    const { message, fieldErrors } = await readErrorPayload(response);
-    throw new AuthError(message, response.status, fieldErrors);
-  }
-
-  if (response.status === 204) return undefined as T;
-
-  return (await response.json()) as T;
-}
-
-function authHeaders(): Record<string, string> {
-  const token = getStoredAccessToken();
-  return token ? { Authorization: `Bearer ${token}` } : {};
-}
+const AUTH_PATH = "auth";
 
 export async function login(
   credentials: LoginCredentials,
 ): Promise<AuthSession> {
-  return request<AuthSession>("/login", {
-    method: "POST",
-    body: JSON.stringify({
+  return apiPost<AuthSession>(`${AUTH_PATH}/login`, {
+    json: {
       email: credentials.email,
       password: credentials.password,
-    }),
+    },
+    retry: 0,
   });
 }
 
 export async function register(details: RegisterDetails): Promise<AuthSession> {
-  return request<AuthSession>("/register", {
-    method: "POST",
-    body: JSON.stringify(details),
+  return apiPost<AuthSession>(`${AUTH_PATH}/register`, {
+    json: details,
+    retry: 0,
   });
 }
 
 export async function requestPasswordReset(
   email: string,
 ): Promise<PasswordResetResult> {
-  return request<PasswordResetResult>("/password-reset", {
-    method: "POST",
-    body: JSON.stringify({ email }),
+  return apiPost<PasswordResetResult>(`${AUTH_PATH}/password-reset`, {
+    json: { email },
+    retry: 0,
   });
 }
 
 export async function logout(): Promise<void> {
-  await fetch(`${AUTH_BASE_URL}/logout`, { method: "POST" }).catch(
+  await apiPost<void>(`${AUTH_PATH}/logout`, { retry: 0 }).catch(
     () => undefined,
   );
 }
 
 export async function fetchSessionUser(token: string): Promise<User> {
-  const session = await request<{ user: User }>("/session", {
-    method: "GET",
+  const session = await apiGet<{ user: User }>(`${AUTH_PATH}/session`, {
     headers: { Authorization: `Bearer ${token}` },
+    retry: 0,
   });
 
   return session.user;
 }
 
 export async function getProfile(): Promise<ProfileUser> {
-  return request<ProfileUser>("/profile", {
-    method: "GET",
-    headers: authHeaders(),
-  });
+  return apiGet<ProfileUser>(`${AUTH_PATH}/profile`);
 }
 
 export async function updateProfile(details: {
   firstName: string;
   lastName: string;
 }): Promise<ProfileUser> {
-  return request<ProfileUser>("/profile", {
-    method: "PATCH",
-    headers: authHeaders(),
-    body: JSON.stringify(details),
-  });
+  return apiPatch<ProfileUser>(`${AUTH_PATH}/profile`, { json: details });
 }
 
 export async function changePassword(input: {
   currentPassword: string;
   newPassword: string;
 }): Promise<void> {
-  await request<void>("/password-change", {
-    method: "POST",
-    headers: authHeaders(),
-    body: JSON.stringify(input),
+  await apiPost<void>(`${AUTH_PATH}/password-change`, {
+    json: input,
+    retry: 0,
   });
 }

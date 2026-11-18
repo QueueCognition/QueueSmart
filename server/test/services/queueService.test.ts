@@ -282,6 +282,71 @@ describe("reading entries", () => {
   });
 });
 
+describe("write atomicity", () => {
+  function rejectNotificationInserts(): void {
+    db.exec(
+      `CREATE TRIGGER reject_notification BEFORE INSERT ON notifications
+       BEGIN SELECT RAISE(ABORT, 'notification failure'); END`,
+    );
+  }
+
+  function restoreNotificationInserts(): void {
+    db.exec("DROP TRIGGER IF EXISTS reject_notification");
+  }
+
+  function storedEntryCount(): number {
+    const row = db
+      .prepare("SELECT COUNT(*) AS total FROM queue_entries")
+      .get() as { total: number };
+    return row.total;
+  }
+
+  it("rolls back a join when the notification cannot be stored", async () => {
+    rejectNotificationInserts();
+
+    try {
+      await assert.rejects(queue.join("user-1", joinInput()));
+    } finally {
+      restoreNotificationInserts();
+    }
+
+    assert.equal(storedEntryCount(), 0);
+    assert.deepEqual(await queue.getPublicBoard("s1"), []);
+  });
+
+  it("rolls back a served entry when the notification cannot be stored", async () => {
+    await queue.join("user-1", joinInput());
+    await queue.join("user-2", joinInput());
+
+    rejectNotificationInserts();
+
+    try {
+      await assert.rejects(queue.serveNext("s1"));
+    } finally {
+      restoreNotificationInserts();
+    }
+
+    const stillQueued = await queue.getPublicBoard("s1");
+    assert.deepEqual(
+      stillQueued.map((row) => row.position),
+      [1, 2],
+    );
+  });
+
+  it("leaves the queue usable after a rolled back transaction", async () => {
+    rejectNotificationInserts();
+
+    try {
+      await assert.rejects(queue.join("user-1", joinInput()));
+    } finally {
+      restoreNotificationInserts();
+    }
+
+    const entry = await queue.join("user-1", joinInput());
+    assert.equal(entry.position, 1);
+  });
+});
+
 describe("serving the next user", () => {
   it("serves position 1 and promotes the next person", async () => {
     await queue.join("user-1", joinInput());

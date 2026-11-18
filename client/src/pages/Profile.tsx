@@ -2,6 +2,9 @@ import "../styles/auth.css";
 import "../styles/dashboard.css";
 import "../styles/profile.css";
 import { useEffect, useState } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import clsx from "clsx";
 import { useAuth } from "../context/AuthContext";
 import { useNotifications } from "../context/NotificationContext";
 import {
@@ -10,18 +13,13 @@ import {
   getProfile,
   updateProfile,
 } from "../services/authService";
+import {
+  profileDetailsSchema,
+  profilePasswordSchema,
+  type ProfileDetailsValues,
+  type ProfilePasswordValues,
+} from "../validation/schemas";
 import type { UserRole } from "../types/auth";
-
-interface DetailsErrors {
-  firstName?: string;
-  lastName?: string;
-}
-
-interface PasswordErrors {
-  currentPassword?: string;
-  newPassword?: string;
-  confirmPassword?: string;
-}
 
 const ROLE_LABELS: Record<UserRole, string> = {
   user: "Member",
@@ -45,20 +43,42 @@ function formatMemberSince(value: string | null): string {
 function Profile() {
   const { user, updateUser, logout } = useAuth();
   const { push } = useNotifications();
-  const [firstName, setFirstName] = useState(user?.firstName ?? "");
-  const [lastName, setLastName] = useState(user?.lastName ?? "");
-  const [detailsErrors, setDetailsErrors] = useState<DetailsErrors>({});
   const [detailsFormError, setDetailsFormError] = useState("");
   const [detailsSuccess, setDetailsSuccess] = useState("");
   const [savingDetails, setSavingDetails] = useState(false);
   const [createdAt, setCreatedAt] = useState<string | null>(null);
   const [profileError, setProfileError] = useState("");
-  const [currentPassword, setCurrentPassword] = useState("");
-  const [newPassword, setNewPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [passwordErrors, setPasswordErrors] = useState<PasswordErrors>({});
   const [passwordFormError, setPasswordFormError] = useState("");
   const [changingPassword, setChangingPassword] = useState(false);
+
+  const {
+    register: registerDetails,
+    handleSubmit: handleDetailsSubmit,
+    reset: resetDetails,
+    setError: setDetailsError,
+    formState: { errors: detailsErrors },
+  } = useForm<ProfileDetailsValues>({
+    resolver: zodResolver(profileDetailsSchema),
+    defaultValues: {
+      firstName: user?.firstName ?? "",
+      lastName: user?.lastName ?? "",
+    },
+  });
+
+  const {
+    register: registerPassword,
+    handleSubmit: handlePasswordSubmit,
+    reset: resetPassword,
+    setError: setPasswordError,
+    formState: { errors: passwordErrors },
+  } = useForm<ProfilePasswordValues>({
+    resolver: zodResolver(profilePasswordSchema),
+    defaultValues: {
+      currentPassword: "",
+      newPassword: "",
+      confirmPassword: "",
+    },
+  });
 
   useEffect(() => {
     let active = true;
@@ -68,8 +88,10 @@ function Profile() {
         if (!active) return;
 
         setCreatedAt(profile.createdAt);
-        setFirstName(profile.firstName);
-        setLastName(profile.lastName);
+        resetDetails({
+          firstName: profile.firstName,
+          lastName: profile.lastName,
+        });
         setProfileError("");
       })
       .catch((error: unknown) => {
@@ -90,64 +112,22 @@ function Profile() {
     return () => {
       active = false;
     };
-  }, [logout]);
+  }, [logout, resetDetails]);
 
-  function validateDetails() {
-    const next: DetailsErrors = {};
-    const trimmedFirst = firstName.trim();
-    const trimmedLast = lastName.trim();
-
-    if (!trimmedFirst) next.firstName = "First name is required";
-    else if (trimmedFirst.length > 50) {
-      next.firstName = "Must be under 50 characters";
-    }
-
-    if (!trimmedLast) next.lastName = "Last name is required";
-    else if (trimmedLast.length > 50) {
-      next.lastName = "Must be under 50 characters";
-    }
-
-    setDetailsErrors(next);
-    return Object.keys(next).length === 0;
-  }
-
-  function validatePassword() {
-    const next: PasswordErrors = {};
-
-    if (!currentPassword) {
-      next.currentPassword = "Current password is required";
-    }
-
-    if (!newPassword) {
-      next.newPassword = "Password is required";
-    } else if (newPassword.length < 8) {
-      next.newPassword = "Password must be at least 8 characters";
-    } else if (currentPassword && newPassword === currentPassword) {
-      next.newPassword =
-        "New password must be different from your current password";
-    }
-
-    if (!confirmPassword) {
-      next.confirmPassword = "Please confirm your password";
-    } else if (confirmPassword !== newPassword) {
-      next.confirmPassword = "Passwords do not match";
-    }
-
-    setPasswordErrors(next);
-    return Object.keys(next).length === 0;
-  }
-
-  async function handleDetailsSubmit(event: React.FormEvent) {
-    event.preventDefault();
+  function onDetailsInvalid() {
     setDetailsFormError("");
     setDetailsSuccess("");
-    if (!validateDetails()) return;
+  }
+
+  async function onDetailsSubmit(values: ProfileDetailsValues) {
+    setDetailsFormError("");
+    setDetailsSuccess("");
 
     setSavingDetails(true);
     try {
       const updated = await updateProfile({
-        firstName: firstName.trim(),
-        lastName: lastName.trim(),
+        firstName: values.firstName,
+        lastName: values.lastName,
       });
 
       updateUser({
@@ -155,8 +135,10 @@ function Profile() {
         lastName: updated.lastName,
       });
       setCreatedAt(updated.createdAt);
-      setFirstName(updated.firstName);
-      setLastName(updated.lastName);
+      resetDetails({
+        firstName: updated.firstName,
+        lastName: updated.lastName,
+      });
       setDetailsSuccess("Profile updated successfully");
       push({ message: "Profile updated", type: "status_change" });
     } catch (error) {
@@ -166,10 +148,20 @@ function Profile() {
           return;
         }
 
-        setDetailsErrors({
-          firstName: error.fieldErrors.firstName,
-          lastName: error.fieldErrors.lastName,
-        });
+        if (error.fieldErrors.firstName) {
+          setDetailsError("firstName", {
+            type: "server",
+            message: error.fieldErrors.firstName,
+          });
+        }
+
+        if (error.fieldErrors.lastName) {
+          setDetailsError("lastName", {
+            type: "server",
+            message: error.fieldErrors.lastName,
+          });
+        }
+
         setDetailsFormError(error.message);
         return;
       }
@@ -180,15 +172,21 @@ function Profile() {
     }
   }
 
-  async function handlePasswordSubmit(event: React.FormEvent) {
-    event.preventDefault();
+  function onPasswordInvalid() {
     setPasswordFormError("");
-    if (!validatePassword()) return;
+  }
+
+  async function onPasswordSubmit(values: ProfilePasswordValues) {
+    setPasswordFormError("");
 
     setChangingPassword(true);
     try {
-      await changePassword({ currentPassword, newPassword });
+      await changePassword({
+        currentPassword: values.currentPassword,
+        newPassword: values.newPassword,
+      });
 
+      resetPassword();
       logout("Password updated. Please sign in again with your new password.");
     } catch (error) {
       if (error instanceof AuthError) {
@@ -197,10 +195,20 @@ function Profile() {
           return;
         }
 
-        setPasswordErrors({
-          currentPassword: error.fieldErrors.currentPassword,
-          newPassword: error.fieldErrors.newPassword,
-        });
+        if (error.fieldErrors.currentPassword) {
+          setPasswordError("currentPassword", {
+            type: "server",
+            message: error.fieldErrors.currentPassword,
+          });
+        }
+
+        if (error.fieldErrors.newPassword) {
+          setPasswordError("newPassword", {
+            type: "server",
+            message: error.fieldErrors.newPassword,
+          });
+        }
+
         setPasswordFormError(error.message);
         return;
       }
@@ -253,7 +261,7 @@ function Profile() {
 
           <form
             className="auth__form"
-            onSubmit={handleDetailsSubmit}
+            onSubmit={handleDetailsSubmit(onDetailsSubmit, onDetailsInvalid)}
             noValidate
           >
             <div className="auth__row">
@@ -263,19 +271,20 @@ function Profile() {
                 </label>
                 <input
                   id="firstName"
-                  className={`auth__input${detailsErrors.firstName ? " auth__input--invalid" : ""}`}
+                  className={clsx("auth__input", {
+                    "auth__input--invalid": detailsErrors.firstName,
+                  })}
                   type="text"
                   autoComplete="given-name"
-                  value={firstName}
-                  onChange={(event) => setFirstName(event.target.value)}
                   aria-invalid={Boolean(detailsErrors.firstName)}
                   aria-describedby={
                     detailsErrors.firstName ? "firstName-error" : undefined
                   }
+                  {...registerDetails("firstName")}
                 />
                 {detailsErrors.firstName && (
                   <span className="auth__error" id="firstName-error">
-                    {detailsErrors.firstName}
+                    {detailsErrors.firstName.message}
                   </span>
                 )}
               </div>
@@ -286,19 +295,20 @@ function Profile() {
                 </label>
                 <input
                   id="lastName"
-                  className={`auth__input${detailsErrors.lastName ? " auth__input--invalid" : ""}`}
+                  className={clsx("auth__input", {
+                    "auth__input--invalid": detailsErrors.lastName,
+                  })}
                   type="text"
                   autoComplete="family-name"
-                  value={lastName}
-                  onChange={(event) => setLastName(event.target.value)}
                   aria-invalid={Boolean(detailsErrors.lastName)}
                   aria-describedby={
                     detailsErrors.lastName ? "lastName-error" : undefined
                   }
+                  {...registerDetails("lastName")}
                 />
                 {detailsErrors.lastName && (
                   <span className="auth__error" id="lastName-error">
-                    {detailsErrors.lastName}
+                    {detailsErrors.lastName.message}
                   </span>
                 )}
               </div>
@@ -343,7 +353,7 @@ function Profile() {
 
           <form
             className="auth__form"
-            onSubmit={handlePasswordSubmit}
+            onSubmit={handlePasswordSubmit(onPasswordSubmit, onPasswordInvalid)}
             noValidate
           >
             <div className="auth__field">
@@ -352,21 +362,22 @@ function Profile() {
               </label>
               <input
                 id="currentPassword"
-                className={`auth__input${passwordErrors.currentPassword ? " auth__input--invalid" : ""}`}
+                className={clsx("auth__input", {
+                  "auth__input--invalid": passwordErrors.currentPassword,
+                })}
                 type="password"
                 autoComplete="current-password"
-                value={currentPassword}
-                onChange={(event) => setCurrentPassword(event.target.value)}
                 aria-invalid={Boolean(passwordErrors.currentPassword)}
                 aria-describedby={
                   passwordErrors.currentPassword
                     ? "currentPassword-error"
                     : undefined
                 }
+                {...registerPassword("currentPassword")}
               />
               {passwordErrors.currentPassword && (
                 <span className="auth__error" id="currentPassword-error">
-                  {passwordErrors.currentPassword}
+                  {passwordErrors.currentPassword.message}
                 </span>
               )}
             </div>
@@ -377,19 +388,20 @@ function Profile() {
               </label>
               <input
                 id="newPassword"
-                className={`auth__input${passwordErrors.newPassword ? " auth__input--invalid" : ""}`}
+                className={clsx("auth__input", {
+                  "auth__input--invalid": passwordErrors.newPassword,
+                })}
                 type="password"
                 autoComplete="new-password"
-                value={newPassword}
-                onChange={(event) => setNewPassword(event.target.value)}
                 aria-invalid={Boolean(passwordErrors.newPassword)}
                 aria-describedby={
                   passwordErrors.newPassword ? "newPassword-error" : undefined
                 }
+                {...registerPassword("newPassword")}
               />
               {passwordErrors.newPassword && (
                 <span className="auth__error" id="newPassword-error">
-                  {passwordErrors.newPassword}
+                  {passwordErrors.newPassword.message}
                 </span>
               )}
             </div>
@@ -400,21 +412,22 @@ function Profile() {
               </label>
               <input
                 id="confirmPassword"
-                className={`auth__input${passwordErrors.confirmPassword ? " auth__input--invalid" : ""}`}
+                className={clsx("auth__input", {
+                  "auth__input--invalid": passwordErrors.confirmPassword,
+                })}
                 type="password"
                 autoComplete="new-password"
-                value={confirmPassword}
-                onChange={(event) => setConfirmPassword(event.target.value)}
                 aria-invalid={Boolean(passwordErrors.confirmPassword)}
                 aria-describedby={
                   passwordErrors.confirmPassword
                     ? "confirmPassword-error"
                     : undefined
                 }
+                {...registerPassword("confirmPassword")}
               />
               {passwordErrors.confirmPassword && (
                 <span className="auth__error" id="confirmPassword-error">
-                  {passwordErrors.confirmPassword}
+                  {passwordErrors.confirmPassword.message}
                 </span>
               )}
             </div>

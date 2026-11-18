@@ -157,30 +157,6 @@
   font-size: 0.85rem;
 }
 
-.priority-pill {
-  display: inline-block;
-  padding: 0.2rem 0.6rem;
-  border-radius: 999px;
-  font-size: 0.75rem;
-  font-weight: 600;
-  text-transform: capitalize;
-}
-
-.priority-pill--low {
-  background: #e8f0e8;
-  color: #34704a;
-}
-
-.priority-pill--medium {
-  background: var(--navy-100);
-  color: var(--navy-700);
-}
-
-.priority-pill--high {
-  background: #fff0e0;
-  color: #a15c13;
-}
-
 .queue-status {
   display: inline-block;
   padding: 0.2rem 0.6rem;

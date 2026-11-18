@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { Menu, MenuButton, MenuItem, MenuItems } from "@headlessui/react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useNotifications } from "../context/NotificationContext";
@@ -11,7 +11,6 @@ const notificationLabels: Record<Notification["type"], string> = {
 };
 
 function NotificationBell() {
-  const [open, setOpen] = useState(false);
   const { isAuthenticated } = useAuth();
   const { notifications, markRead, markAllRead } = useNotifications();
 
@@ -21,16 +20,12 @@ function NotificationBell() {
 
   return (
     <div className="notif-slot">
-      <div
-        className="notif-wrapper"
-        onMouseEnter={() => setOpen(true)}
-        onMouseLeave={() => setOpen(false)}
-      >
-        <button
+      <Menu as="div" className="notif-wrapper">
+        <MenuButton
+          as="button"
           type="button"
           className="navbar-link notif-bell"
           aria-label="Notifications"
-          onClick={() => setOpen((prev) => !prev)}
         >
           <svg
             width="20"
@@ -49,58 +44,54 @@ function NotificationBell() {
           {unreadCount > 0 && (
             <span className="notif-badge">{unreadCount}</span>
           )}
-        </button>
+        </MenuButton>
 
-        {open && (
-          <div className="notif-menu">
-            <div className="notif-menu-header">
-              <span>Notifications</span>
-              {unreadCount > 0 && (
-                <button
-                  type="button"
-                  className="notif-mark-all"
-                  onClick={markAllRead}
-                >
-                  Mark all as read
-                </button>
-              )}
-            </div>
-
-            {notifications.length === 0 ? (
-              <p className="notif-empty">You're all caught up.</p>
-            ) : (
-              <ul className="notif-list">
-                {notifications.slice(0, 5).map((n) => (
-                  <li
-                    key={n.id}
-                    className={`notif-item ${n.read ? "notif-item--read" : ""}`}
-                    onClick={() => markRead(n.id)}
-                  >
-                    <span className="notif-dot-slot">
-                      {!n.read && <span className="notif-dot" />}
-                    </span>
-                    <div className="notif-content">
-                      <span className="notif-title">
-                        {notificationLabels[n.type]}
-                      </span>
-                      <span className="notif-message">{n.message}</span>
-                      <span className="notif-time">{timeAgo(n.timestamp)}</span>
-                    </div>
-                  </li>
-                ))}
-              </ul>
+        <MenuItems as="div" className="notif-menu" modal={false}>
+          <div className="notif-menu-header">
+            <span>Notifications</span>
+            {unreadCount > 0 && (
+              <MenuItem
+                as="button"
+                type="button"
+                className="notif-mark-all"
+                onClick={markAllRead}
+              >
+                Mark all as read
+              </MenuItem>
             )}
-
-            <Link
-              to="/dashboard"
-              className="notif-view-all"
-              onClick={() => setOpen(false)}
-            >
-              View all
-            </Link>
           </div>
-        )}
-      </div>
+
+          {notifications.length === 0 ? (
+            <p className="notif-empty">You're all caught up.</p>
+          ) : (
+            <ul className="notif-list">
+              {notifications.slice(0, 5).map((n) => (
+                <MenuItem
+                  key={n.id}
+                  as="li"
+                  className={`notif-item ${n.read ? "notif-item--read" : ""}`}
+                  onClick={() => markRead(n.id)}
+                >
+                  <span className="notif-dot-slot">
+                    {!n.read && <span className="notif-dot" />}
+                  </span>
+                  <div className="notif-content">
+                    <span className="notif-title">
+                      {notificationLabels[n.type]}
+                    </span>
+                    <span className="notif-message">{n.message}</span>
+                    <span className="notif-time">{timeAgo(n.timestamp)}</span>
+                  </div>
+                </MenuItem>
+              ))}
+            </ul>
+          )}
+
+          <MenuItem as={Link} to="/dashboard" className="notif-view-all">
+            View all
+          </MenuItem>
+        </MenuItems>
+      </Menu>
     </div>
   );
 }

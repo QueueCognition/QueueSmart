@@ -16,6 +16,12 @@ import type {
 } from "../types/auth";
 import * as authService from "../services/authService";
 import { AuthError } from "../services/authError";
+import {
+  clearSession,
+  persistSession,
+  readSession,
+  sessionIsPersistent,
+} from "../services/session";
 
 interface AuthContextValue {
   user: User | null;
@@ -30,45 +36,9 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
-function readStoredSession(): AuthSession | null {
-  const raw =
-    localStorage.getItem(authService.AUTH_SESSION_STORAGE_KEY) ??
-    sessionStorage.getItem(authService.AUTH_SESSION_STORAGE_KEY);
-  if (!raw) return null;
-
-  try {
-    const session = JSON.parse(raw) as AuthSession;
-    if (new Date(session.expiresAt).getTime() <= Date.now()) {
-      clearStoredSession();
-      return null;
-    }
-    return session;
-  } catch {
-    clearStoredSession();
-    return null;
-  }
-}
-
-function persistSession(session: AuthSession, remember: boolean) {
-  clearStoredSession();
-  (remember ? localStorage : sessionStorage).setItem(
-    authService.AUTH_SESSION_STORAGE_KEY,
-    JSON.stringify(session),
-  );
-}
-
-function clearStoredSession() {
-  localStorage.removeItem(authService.AUTH_SESSION_STORAGE_KEY);
-  sessionStorage.removeItem(authService.AUTH_SESSION_STORAGE_KEY);
-}
-
-function storedSessionIsPersistent(): boolean {
-  return localStorage.getItem(authService.AUTH_SESSION_STORAGE_KEY) !== null;
-}
-
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<AuthSession | null>(() =>
-    readStoredSession(),
+    readSession(),
   );
   const [verifiedToken, setVerifiedToken] = useState<string | null>(null);
   const [sessionNotice, setSessionNotice] = useState<string | null>(null);
@@ -89,7 +59,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (cancelled) return;
 
         const nextSession: AuthSession = { ...session, user: freshUser };
-        persistSession(nextSession, storedSessionIsPersistent());
+        persistSession(nextSession, sessionIsPersistent());
         setSession(nextSession);
         setVerifiedToken(token);
       })
@@ -101,7 +71,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           return;
         }
 
-        clearStoredSession();
+        clearSession();
         setSession(null);
         setVerifiedToken(null);
         setSessionNotice(error.message);
@@ -140,7 +110,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         ...session,
         user: { ...session.user, ...updates },
       };
-      persistSession(nextSession, storedSessionIsPersistent());
+      persistSession(nextSession, sessionIsPersistent());
       setSession(nextSession);
     },
     [session],
@@ -157,7 +127,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = useCallback((notice?: string) => {
     void authService.logout();
-    clearStoredSession();
+    clearSession();
     setSession(null);
     setVerifiedToken(null);
     setSessionNotice(notice ?? null);
