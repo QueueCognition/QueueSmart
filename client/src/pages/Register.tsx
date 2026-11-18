@@ -1,64 +1,49 @@
 import "../styles/auth.css";
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import clsx from "clsx";
 import { useAuth } from "../context/AuthContext";
 import { useNotifications } from "../context/NotificationContext";
 import { AuthError } from "../services/authService";
-
-interface FieldErrors {
-  firstName?: string;
-  lastName?: string;
-  email?: string;
-  password?: string;
-  confirmPassword?: string;
-}
+import { registerSchema, type RegisterValues } from "../validation/schemas";
 
 function Register() {
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [formError, setFormError] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const { register } = useAuth();
+  const { register: registerUser } = useAuth();
   const { push } = useNotifications();
   const navigate = useNavigate();
 
-  function validate() {
-    const next: FieldErrors = {};
-    if (!firstName.trim()) next.firstName = "First name is required";
-    else if (firstName.trim().length > 50)
-      next.firstName = "Must be under 50 characters";
-    if (!lastName.trim()) next.lastName = "Last name is required";
-    else if (lastName.trim().length > 50)
-      next.lastName = "Must be under 50 characters";
-    if (!email.trim()) next.email = "Email is required";
-    else if (!/^\S+@\S+\.\S+$/.test(email))
-      next.email = "Enter a valid email address";
-    if (!password) next.password = "Password is required";
-    else if (password.length < 8)
-      next.password = "Password must be at least 8 characters";
-    if (!confirmPassword) next.confirmPassword = "Please confirm your password";
-    else if (confirmPassword !== password)
-      next.confirmPassword = "Passwords do not match";
-    setFieldErrors(next);
-    return Object.keys(next).length === 0;
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<RegisterValues>({
+    resolver: zodResolver(registerSchema),
+    defaultValues: {
+      firstName: "",
+      lastName: "",
+      email: "",
+      password: "",
+      confirmPassword: "",
+    },
+  });
+
+  function onInvalid() {
+    setFormError("");
   }
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
+  async function onSubmit(values: RegisterValues) {
     setFormError("");
-    if (!validate()) return;
-
     setSubmitting(true);
     try {
-      const user = await register({
-        firstName: firstName.trim(),
-        lastName: lastName.trim(),
-        email: email.trim(),
-        password,
+      const user = await registerUser({
+        firstName: values.firstName,
+        lastName: values.lastName,
+        email: values.email,
+        password: values.password,
       });
       push({
         message:
@@ -95,7 +80,11 @@ function Register() {
           </p>
         )}
 
-        <form className="auth__form" onSubmit={handleSubmit} noValidate>
+        <form
+          className="auth__form"
+          onSubmit={handleSubmit(onSubmit, onInvalid)}
+          noValidate
+        >
           <div className="auth__row">
             <div className="auth__field">
               <label className="auth__label" htmlFor="firstName">
@@ -103,20 +92,21 @@ function Register() {
               </label>
               <input
                 id="firstName"
-                className={`auth__input${fieldErrors.firstName ? " auth__input--invalid" : ""}`}
+                className={clsx("auth__input", {
+                  "auth__input--invalid": errors.firstName,
+                })}
                 type="text"
                 autoComplete="given-name"
                 placeholder="Jamie"
-                value={firstName}
-                onChange={(e) => setFirstName(e.target.value)}
-                aria-invalid={Boolean(fieldErrors.firstName)}
+                aria-invalid={Boolean(errors.firstName)}
                 aria-describedby={
-                  fieldErrors.firstName ? "firstName-error" : undefined
+                  errors.firstName ? "firstName-error" : undefined
                 }
+                {...register("firstName")}
               />
-              {fieldErrors.firstName && (
+              {errors.firstName && (
                 <span className="auth__error" id="firstName-error">
-                  {fieldErrors.firstName}
+                  {errors.firstName.message}
                 </span>
               )}
             </div>
@@ -127,20 +117,21 @@ function Register() {
               </label>
               <input
                 id="lastName"
-                className={`auth__input${fieldErrors.lastName ? " auth__input--invalid" : ""}`}
+                className={clsx("auth__input", {
+                  "auth__input--invalid": errors.lastName,
+                })}
                 type="text"
                 autoComplete="family-name"
                 placeholder="Win"
-                value={lastName}
-                onChange={(e) => setLastName(e.target.value)}
-                aria-invalid={Boolean(fieldErrors.lastName)}
+                aria-invalid={Boolean(errors.lastName)}
                 aria-describedby={
-                  fieldErrors.lastName ? "lastName-error" : undefined
+                  errors.lastName ? "lastName-error" : undefined
                 }
+                {...register("lastName")}
               />
-              {fieldErrors.lastName && (
+              {errors.lastName && (
                 <span className="auth__error" id="lastName-error">
-                  {fieldErrors.lastName}
+                  {errors.lastName.message}
                 </span>
               )}
             </div>
@@ -152,18 +143,19 @@ function Register() {
             </label>
             <input
               id="email"
-              className={`auth__input${fieldErrors.email ? " auth__input--invalid" : ""}`}
+              className={clsx("auth__input", {
+                "auth__input--invalid": errors.email,
+              })}
               type="email"
               autoComplete="email"
               placeholder="jamie@example.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              aria-invalid={Boolean(fieldErrors.email)}
-              aria-describedby={fieldErrors.email ? "email-error" : undefined}
+              aria-invalid={Boolean(errors.email)}
+              aria-describedby={errors.email ? "email-error" : undefined}
+              {...register("email")}
             />
-            {fieldErrors.email && (
+            {errors.email && (
               <span className="auth__error" id="email-error">
-                {fieldErrors.email}
+                {errors.email.message}
               </span>
             )}
           </div>
@@ -174,20 +166,19 @@ function Register() {
             </label>
             <input
               id="password"
-              className={`auth__input${fieldErrors.password ? " auth__input--invalid" : ""}`}
+              className={clsx("auth__input", {
+                "auth__input--invalid": errors.password,
+              })}
               type="password"
               autoComplete="new-password"
               placeholder="At least 8 characters"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              aria-invalid={Boolean(fieldErrors.password)}
-              aria-describedby={
-                fieldErrors.password ? "password-error" : undefined
-              }
+              aria-invalid={Boolean(errors.password)}
+              aria-describedby={errors.password ? "password-error" : undefined}
+              {...register("password")}
             />
-            {fieldErrors.password && (
+            {errors.password && (
               <span className="auth__error" id="password-error">
-                {fieldErrors.password}
+                {errors.password.message}
               </span>
             )}
           </div>
@@ -198,22 +189,21 @@ function Register() {
             </label>
             <input
               id="confirmPassword"
-              className={`auth__input${fieldErrors.confirmPassword ? " auth__input--invalid" : ""}`}
+              className={clsx("auth__input", {
+                "auth__input--invalid": errors.confirmPassword,
+              })}
               type="password"
               autoComplete="new-password"
               placeholder="Re-enter your password"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              aria-invalid={Boolean(fieldErrors.confirmPassword)}
+              aria-invalid={Boolean(errors.confirmPassword)}
               aria-describedby={
-                fieldErrors.confirmPassword
-                  ? "confirmPassword-error"
-                  : undefined
+                errors.confirmPassword ? "confirmPassword-error" : undefined
               }
+              {...register("confirmPassword")}
             />
-            {fieldErrors.confirmPassword && (
+            {errors.confirmPassword && (
               <span className="auth__error" id="confirmPassword-error">
-                {fieldErrors.confirmPassword}
+                {errors.confirmPassword.message}
               </span>
             )}
           </div>

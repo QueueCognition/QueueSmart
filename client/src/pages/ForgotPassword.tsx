@@ -1,7 +1,14 @@
 import "../styles/auth.css";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import clsx from "clsx";
 import { AuthError, requestPasswordReset } from "../services/authService";
+import {
+  forgotPasswordSchema,
+  type ForgotPasswordValues,
+} from "../validation/schemas";
 
 function submitLabel(submitting: boolean, cooldown: number) {
   if (submitting) return "Sending…";
@@ -10,8 +17,6 @@ function submitLabel(submitting: boolean, cooldown: number) {
 }
 
 function ForgotPassword() {
-  const [email, setEmail] = useState("");
-  const [fieldError, setFieldError] = useState("");
   const [formError, setFormError] = useState("");
   const [sentTo, setSentTo] = useState("");
   const [cooldown, setCooldown] = useState(0);
@@ -23,29 +28,27 @@ function ForgotPassword() {
     return () => clearTimeout(timer);
   }, [cooldown]);
 
-  function validate() {
-    if (!email.trim()) {
-      setFieldError("Email is required");
-      return false;
-    }
-    if (!/^\S+@\S+\.\S+$/.test(email)) {
-      setFieldError("Enter a valid email address");
-      return false;
-    }
-    setFieldError("");
-    return true;
-  }
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<ForgotPasswordValues>({
+    resolver: zodResolver(forgotPasswordSchema),
+    defaultValues: { email: "" },
+  });
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
+  function onInvalid() {
     setFormError("");
     setSentTo("");
-    if (!validate()) return;
+  }
 
+  async function onSubmit(values: ForgotPasswordValues) {
+    setFormError("");
+    setSentTo("");
     setSubmitting(true);
     try {
-      const result = await requestPasswordReset(email.trim());
-      setSentTo(email.trim());
+      const result = await requestPasswordReset(values.email);
+      setSentTo(values.email);
       setCooldown(result.retryAfterSeconds);
     } catch (error) {
       setFormError(
@@ -82,25 +85,30 @@ function ForgotPassword() {
           </p>
         )}
 
-        <form className="auth__form" onSubmit={handleSubmit} noValidate>
+        <form
+          className="auth__form"
+          onSubmit={handleSubmit(onSubmit, onInvalid)}
+          noValidate
+        >
           <div className="auth__field">
             <label className="auth__label" htmlFor="email">
               Email
             </label>
             <input
               id="email"
-              className={`auth__input${fieldError ? " auth__input--invalid" : ""}`}
+              className={clsx("auth__input", {
+                "auth__input--invalid": errors.email,
+              })}
               type="email"
               autoComplete="email"
               placeholder="jamie@example.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              aria-invalid={Boolean(fieldError)}
-              aria-describedby={fieldError ? "email-error" : undefined}
+              aria-invalid={Boolean(errors.email)}
+              aria-describedby={errors.email ? "email-error" : undefined}
+              {...register("email")}
             />
-            {fieldError && (
+            {errors.email && (
               <span className="auth__error" id="email-error">
-                {fieldError}
+                {errors.email.message}
               </span>
             )}
           </div>

@@ -1,12 +1,15 @@
 import "../styles/joinqueue.css";
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useForm, useWatch } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import type { QueueEntry } from "../types/queue";
 import { getMyQueue, joinQueue, leaveQueue } from "../services/queueService";
 import { describeApiError } from "../services/apiClient";
 import { useAuth } from "../context/AuthContext";
 import { useServices, useWaitEstimate } from "../hooks/useServices";
 import { queryKeys } from "../lib/queryClient";
+import { joinQueueSchema, type JoinQueueValues } from "../validation/schemas";
 import { Link } from "react-router-dom";
 
 const TIME_SLOTS = [
@@ -20,19 +23,34 @@ const TIME_SLOTS = [
   "2:00 PM",
 ];
 
+const DEFAULT_VALUES: JoinQueueValues = {
+  serviceId: "",
+  date: "",
+  timeSlot: "",
+  fullName: "",
+  email: "",
+};
+
 function JoinQueue() {
   const servicesQuery = useServices();
   const services = servicesQuery.data ?? [];
-  const [serviceId, setServiceId] = useState("");
-  const [date, setDate] = useState("");
-  const [timeSlot, setTimeSlot] = useState("");
-  const [fullName, setFullName] = useState("");
-  const [email, setEmail] = useState("");
-  const [errors, setErrors] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const { isAuthenticated } = useAuth();
   const client = useQueryClient();
+
+  const {
+    register,
+    handleSubmit,
+    resetField,
+    control,
+    formState: { errors },
+  } = useForm<JoinQueueValues>({
+    resolver: zodResolver(joinQueueSchema),
+    defaultValues: DEFAULT_VALUES,
+  });
+
+  const serviceId = useWatch({ control, name: "serviceId" });
 
   const myQueueQuery = useQuery({
     queryKey: queryKeys.myQueue,
@@ -58,32 +76,16 @@ function JoinQueue() {
       )) ||
     "";
 
-  function validate() {
-    const next: Record<string, string> = {};
-    if (!serviceId) next.serviceId = "Please select a service";
-    if (!date) next.date = "Please select a date";
-    if (!timeSlot) next.timeSlot = "Please select a time slot";
-    if (!fullName.trim()) next.fullName = "Full name is required";
-    else if (fullName.trim().length > 100)
-      next.fullName = "Name must be 100 characters or fewer";
-    if (!email.trim()) next.email = "Email is required";
-    else if (!/^\S+@\S+\.\S+$/.test(email))
-      next.email = "Enter a valid email address";
-    else if (email.trim().length > 254)
-      next.email = "Email must be 254 characters or fewer";
-    setErrors(next);
-    return Object.keys(next).length === 0;
-  }
+  async function onSubmit(values: JoinQueueValues) {
+    const service = services.find((item) => item.id === values.serviceId);
+    if (!service) return;
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!validate() || !selectedService) return;
     if (!isAuthenticated) {
       setFormError("Sign in before joining the queue.");
       return;
     }
 
-    if (!selectedService.isAvailable) {
+    if (!service.isAvailable) {
       setFormError("This service is not accepting new entries right now.");
       return;
     }
@@ -92,16 +94,16 @@ function JoinQueue() {
     setSubmitting(true);
     try {
       await joinQueue({
-        serviceId,
-        fullName,
-        email,
-        date,
-        timeSlot,
+        serviceId: values.serviceId,
+        fullName: values.fullName,
+        email: values.email,
+        date: values.date,
+        timeSlot: values.timeSlot,
       });
       await client.invalidateQueries({ queryKey: queryKeys.myQueue });
-      setServiceId("");
-      setDate("");
-      setTimeSlot("");
+      resetField("serviceId");
+      resetField("date");
+      resetField("timeSlot");
     } catch (error) {
       setFormError(describeApiError(error, "Failed to join the queue."));
     } finally {
@@ -130,13 +132,14 @@ function JoinQueue() {
           Select a service and preferred time to join the queue
         </p>
 
-        <form onSubmit={handleSubmit} noValidate>
+        <form onSubmit={handleSubmit(onSubmit)} noValidate>
           <div className="form-group">
             <label htmlFor="service">Service</label>
             <select
               id="service"
-              value={serviceId}
-              onChange={(e) => setServiceId(e.target.value)}
+              aria-invalid={Boolean(errors.serviceId)}
+              aria-describedby={errors.serviceId ? "service-error" : undefined}
+              {...register("serviceId")}
             >
               <option value="">Select a service...</option>
               {services.map((s) => (
@@ -147,7 +150,9 @@ function JoinQueue() {
               ))}
             </select>
             {errors.serviceId && (
-              <span className="field-error">{errors.serviceId}</span>
+              <span className="field-error" id="service-error">
+                {errors.serviceId.message}
+              </span>
             )}
           </div>
 
@@ -184,11 +189,14 @@ function JoinQueue() {
               <input
                 id="date"
                 type="date"
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
+                aria-invalid={Boolean(errors.date)}
+                aria-describedby={errors.date ? "date-error" : undefined}
+                {...register("date")}
               />
               {errors.date && (
-                <span className="field-error">{errors.date}</span>
+                <span className="field-error" id="date-error">
+                  {errors.date.message}
+                </span>
               )}
             </div>
 
@@ -196,8 +204,11 @@ function JoinQueue() {
               <label htmlFor="timeSlot">Preferred Time</label>
               <select
                 id="timeSlot"
-                value={timeSlot}
-                onChange={(e) => setTimeSlot(e.target.value)}
+                aria-invalid={Boolean(errors.timeSlot)}
+                aria-describedby={
+                  errors.timeSlot ? "timeSlot-error" : undefined
+                }
+                {...register("timeSlot")}
               >
                 <option value="">Select a time...</option>
                 {TIME_SLOTS.map((t) => (
@@ -207,7 +218,9 @@ function JoinQueue() {
                 ))}
               </select>
               {errors.timeSlot && (
-                <span className="field-error">{errors.timeSlot}</span>
+                <span className="field-error" id="timeSlot-error">
+                  {errors.timeSlot.message}
+                </span>
               )}
             </div>
           </div>
@@ -218,12 +231,15 @@ function JoinQueue() {
               id="fullName"
               type="text"
               maxLength={100}
-              value={fullName}
-              onChange={(e) => setFullName(e.target.value)}
               placeholder="Jamie Win"
+              aria-invalid={Boolean(errors.fullName)}
+              aria-describedby={errors.fullName ? "fullName-error" : undefined}
+              {...register("fullName")}
             />
             {errors.fullName && (
-              <span className="field-error">{errors.fullName}</span>
+              <span className="field-error" id="fullName-error">
+                {errors.fullName.message}
+              </span>
             )}
           </div>
 
@@ -232,12 +248,15 @@ function JoinQueue() {
             <input
               id="email"
               type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
               placeholder="jamie@example.com"
+              aria-invalid={Boolean(errors.email)}
+              aria-describedby={errors.email ? "email-error" : undefined}
+              {...register("email")}
             />
             {errors.email && (
-              <span className="field-error">{errors.email}</span>
+              <span className="field-error" id="email-error">
+                {errors.email.message}
+              </span>
             )}
           </div>
 

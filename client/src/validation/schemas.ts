@@ -42,11 +42,23 @@ export const registerSchema = z
     firstName: z
       .string()
       .trim()
-      .superRefine(requiredThenMax("First name is required", NAME_MAX, "Must be under 50 characters")),
+      .superRefine(
+        requiredThenMax(
+          "First name is required",
+          NAME_MAX,
+          "Must be under 50 characters",
+        ),
+      ),
     lastName: z
       .string()
       .trim()
-      .superRefine(requiredThenMax("Last name is required", NAME_MAX, "Must be under 50 characters")),
+      .superRefine(
+        requiredThenMax(
+          "Last name is required",
+          NAME_MAX,
+          "Must be under 50 characters",
+        ),
+      ),
     email: emailField,
     password: z.string().superRefine((value, ctx) => {
       if (!value) {
@@ -84,11 +96,23 @@ export const profileDetailsSchema = z.object({
   firstName: z
     .string()
     .trim()
-    .superRefine(requiredThenMax("First name is required", NAME_MAX, "Must be under 50 characters")),
+    .superRefine(
+      requiredThenMax(
+        "First name is required",
+        NAME_MAX,
+        "Must be under 50 characters",
+      ),
+    ),
   lastName: z
     .string()
     .trim()
-    .superRefine(requiredThenMax("Last name is required", NAME_MAX, "Must be under 50 characters")),
+    .superRefine(
+      requiredThenMax(
+        "Last name is required",
+        NAME_MAX,
+        "Must be under 50 characters",
+      ),
+    ),
 });
 
 export const profilePasswordSchema = z
