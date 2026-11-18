@@ -15,12 +15,17 @@
     "format:check": "prettier --check \"src/**/*.{ts,tsx,css}\""
   },
   "dependencies": {
+    "@headlessui/react": "^2.2.10",
+    "@hookform/resolvers": "^7.0.7",
     "@tanstack/react-query": "^5.108.0",
+    "clsx": "^2.1.1",
     "date-fns": "^4.4.0",
     "ky": "^2.2.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
-    "react-router-dom": "^7.18.4"
+    "react-hook-form": "^7.92.0",
+    "react-router-dom": "^7.18.4",
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
