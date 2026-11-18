@@ -2,6 +2,8 @@ import { randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
 
 const SALT_BYTES = 16;
 const KEY_LENGTH = 64;
+const SALT_PATTERN = /^[0-9a-f]{32}$/;
+const DERIVED_PATTERN = /^[0-9a-f]{128}$/;
 
 export function hashPassword(password: string): string {
   const salt = randomBytes(SALT_BYTES).toString("hex");
@@ -10,11 +12,15 @@ export function hashPassword(password: string): string {
 }
 
 export function verifyPassword(password: string, stored: string): boolean {
-  const [salt, derived] = stored.split(":");
-  if (!salt || !derived) return false;
+  const parts = stored.split(":");
+  if (parts.length !== 2) return false;
+
+  const [salt, derived] = parts;
+  if (salt === undefined || derived === undefined) return false;
+  if (!SALT_PATTERN.test(salt) || !DERIVED_PATTERN.test(derived)) return false;
 
   const expected = Buffer.from(derived, "hex");
-  const actual = scryptSync(password, salt, expected.length);
+  const actual = scryptSync(password, salt, KEY_LENGTH);
 
-  return expected.length === actual.length && timingSafeEqual(expected, actual);
+  return timingSafeEqual(expected, actual);
 }

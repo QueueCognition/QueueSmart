@@ -14,17 +14,6 @@ export function hierarchy(
   return ROLE_HIERARCHY[user.role] >= ROLE_HIERARCHY[minimumRole];
 }
 
-export function isUser(user: User | null | undefined): boolean {
-  return hierarchy(user, "user");
-}
-
 export function isStaff(user: User | null | undefined): boolean {
   return hierarchy(user, "staff");
 }
-
-export function isAdmin(user: User | null | undefined): boolean {
-  return hierarchy(user, "admin");
-}
-
-export const hasMinimumRole = hierarchy;
-export const isStaffOrAbove = isStaff;

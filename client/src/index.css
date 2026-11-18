@@ -15,6 +15,12 @@
   --status-waiting: #e8a33d;
   --status-ready: #2fa86b;
   --status-served: #8992a8;
+
+  --danger: #c0392b;
+  --priority-low-bg: #e8f0e8;
+  --priority-low-text: #34704a;
+  --priority-high-bg: #fff0e0;
+  --priority-high-text: #a15c13;
 }
 
 * {
@@ -307,4 +313,34 @@ body {
 
 .notif-view-all:hover {
   background: var(--navy-100);
+}
+
+.priority-pill {
+  display: inline-block;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+.priority-pill--low {
+  background: var(--priority-low-bg);
+  color: var(--priority-low-text);
+}
+
+.priority-pill--medium {
+  background: var(--navy-100);
+  color: var(--navy-700);
+}
+
+.priority-pill--high {
+  background: var(--priority-high-bg);
+  color: var(--priority-high-text);
+}
+
+.field-error,
+.service-error {
+  color: var(--danger);
+  font-size: 0.8rem;
 }

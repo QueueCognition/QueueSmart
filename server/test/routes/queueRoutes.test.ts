@@ -147,7 +147,7 @@ describe("POST /api/queue/join", () => {
   });
 
   it("returns 409 while the service is paused", async () => {
-    new ServiceService(db).setAvailability(1, false);
+    new ServiceService(db).setAvailability("1", false);
 
     try {
       const res = await request(app)
@@ -158,15 +158,15 @@ describe("POST /api/queue/join", () => {
       assert.equal(res.status, 409);
       assert.match(String(res.body?.message), /not accepting new entries/i);
     } finally {
-      new ServiceService(db).setAvailability(1, true);
+      new ServiceService(db).setAvailability("1", true);
     }
   });
 
   it("accepts new entries once the service is resumed", async () => {
     const serviceService = new ServiceService(db);
 
-    serviceService.setAvailability(1, false);
-    serviceService.setAvailability(1, true);
+    serviceService.setAvailability("1", false);
+    serviceService.setAvailability("1", true);
 
     const res = await request(app)
       .post("/api/queue/join")
@@ -182,7 +182,7 @@ describe("POST /api/queue/join", () => {
       .set(actingAs("user-a"))
       .send(joinBody());
 
-    new ServiceService(db).setAvailability(1, false);
+    new ServiceService(db).setAvailability("1", false);
 
     try {
       const res = await request(app)
@@ -192,7 +192,7 @@ describe("POST /api/queue/join", () => {
       assert.equal(res.status, 200);
       assert.equal(res.body.served.userId, "user-a");
     } finally {
-      new ServiceService(db).setAvailability(1, true);
+      new ServiceService(db).setAvailability("1", true);
     }
   });
 

@@ -104,16 +104,16 @@
 }
 
 .auth__input--invalid {
-  border-color: #c0392b;
+  border-color: var(--danger);
 }
 
 .auth__input--invalid:focus {
-  border-color: #c0392b;
+  border-color: var(--danger);
   box-shadow: 0 0 0 3px rgba(192, 57, 43, 0.18);
 }
 
 .auth__error {
-  color: #c0392b;
+  color: var(--danger);
   font-size: 0.8rem;
 }
 

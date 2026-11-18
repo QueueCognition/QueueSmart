@@ -1,4 +1,12 @@
 import { ValidationError, type FieldErrors } from "../utils/errors";
+import {
+  EMAIL_PATTERN,
+  MAX_CUSTOMER_NAME_LENGTH,
+  MAX_EMAIL_LENGTH,
+  MAX_ID_LENGTH,
+  asRecord,
+  hasFieldErrors,
+} from "./shared";
 
 export const QUEUE_TIME_SLOTS = [
   "9:00 AM",
@@ -11,10 +19,6 @@ export const QUEUE_TIME_SLOTS = [
   "2:00 PM",
 ];
 
-export const MAX_NAME_LENGTH = 100;
-export const MAX_EMAIL_LENGTH = 254;
-export const MAX_ID_LENGTH = 64;
-
 export interface JoinQueueInput {
   serviceId: string;
   customerName: string;
@@ -23,7 +27,6 @@ export interface JoinQueueInput {
   timeSlot: string;
 }
 
-const EMAIL_PATTERN = /^\S+@\S+\.\S+$/;
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
 function isRealDate(value: string): boolean {
@@ -39,13 +42,13 @@ function earliestAllowedDate(): string {
   return new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
 }
 
-function readText(
-  raw: Record<string, unknown>,
+function readRequiredText(
+  source: Record<string, unknown>,
   key: string,
   errors: FieldErrors,
   requiredMessage: string,
 ): string {
-  const value = raw[key];
+  const value = source[key];
 
   if (value === undefined || value === null) {
     errors[key] = requiredMessage;
@@ -62,23 +65,25 @@ function readText(
 }
 
 export function validateJoinQueueInput(body: unknown): JoinQueueInput {
-  const raw = (typeof body === "object" && body !== null ? body : {}) as Record<
-    string,
-    unknown
-  >;
+  const source = asRecord(body);
   const errors: FieldErrors = {};
 
-  const serviceId = readText(
-    raw,
+  const serviceId = readRequiredText(
+    source,
     "serviceId",
     errors,
     "Please select a service",
   );
-  const fullName = readText(raw, "fullName", errors, "Full name is required");
-  const email = readText(raw, "email", errors, "Email is required");
-  const date = readText(raw, "date", errors, "Please select a date");
-  const timeSlot = readText(
-    raw,
+  const fullName = readRequiredText(
+    source,
+    "fullName",
+    errors,
+    "Full name is required",
+  );
+  const email = readRequiredText(source, "email", errors, "Email is required");
+  const date = readRequiredText(source, "date", errors, "Please select a date");
+  const timeSlot = readRequiredText(
+    source,
     "timeSlot",
     errors,
     "Please select a time slot",
@@ -88,8 +93,8 @@ export function validateJoinQueueInput(body: unknown): JoinQueueInput {
     errors.serviceId = "Invalid service";
   }
 
-  if (fullName.length > MAX_NAME_LENGTH) {
-    errors.fullName = `Name must be ${MAX_NAME_LENGTH} characters or fewer`;
+  if (fullName.length > MAX_CUSTOMER_NAME_LENGTH) {
+    errors.fullName = `Name must be ${MAX_CUSTOMER_NAME_LENGTH} characters or fewer`;
   }
 
   if (email.length > MAX_EMAIL_LENGTH) {
@@ -109,7 +114,7 @@ export function validateJoinQueueInput(body: unknown): JoinQueueInput {
     errors.timeSlot = "Invalid time slot";
   }
 
-  if (Object.keys(errors).length > 0) {
+  if (hasFieldErrors(errors)) {
     throw new ValidationError(errors);
   }
 

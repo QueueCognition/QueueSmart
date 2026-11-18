@@ -2,12 +2,13 @@ import {
   createContext,
   useCallback,
   useContext,
-  useEffect,
-  useState,
+  useMemo,
   type ReactNode,
 } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { Notification } from "../types/queue";
 import { useAuth } from "./AuthContext";
+import { POLL_INTERVAL_MS, queryKeys } from "../lib/queryClient";
 import {
   getNotifications,
   markNotificationAsRead,
@@ -27,47 +28,39 @@ const NotificationContext = createContext<NotificationContextValue | undefined>(
 
 export function NotificationProvider({ children }: { children: ReactNode }) {
   const { isAuthenticated, isInitializing } = useAuth();
+  const client = useQueryClient();
 
-  const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [wasAuthenticated, setWasAuthenticated] = useState(isAuthenticated);
+  const query = useQuery({
+    queryKey: queryKeys.notifications,
+    queryFn: getNotifications,
+    enabled: isAuthenticated && !isInitializing,
+    refetchInterval: POLL_INTERVAL_MS,
+    refetchIntervalInBackground: false,
+    retry: false,
+  });
 
-  if (wasAuthenticated !== isAuthenticated) {
-    setWasAuthenticated(isAuthenticated);
-    setNotifications([]);
-  }
+  const notifications = useMemo(
+    () => (isAuthenticated ? (query.data ?? []) : []),
+    [isAuthenticated, query.data],
+  );
 
-  useEffect(() => {
-    if (!isAuthenticated || isInitializing) {
-      return;
-    }
+  const markOne = useMutation({
+    mutationFn: markNotificationAsRead,
+    onSuccess: (updated) => {
+      client.setQueryData<Notification[]>(queryKeys.notifications, (current) =>
+        current?.map((n) => (n.id === updated.id ? updated : n)),
+      );
+    },
+  });
 
-    let active = true;
-
-    async function refresh() {
-      try {
-        const loadedNotifications = await getNotifications();
-
-        if (active) {
-          setNotifications(loadedNotifications);
-        }
-      } catch (error: unknown) {
-        if (active) {
-          console.error("Failed to load notifications:", error);
-        }
-      }
-    }
-
-    void refresh();
-
-    const interval = window.setInterval(() => {
-      void refresh();
-    }, 5000);
-
-    return () => {
-      active = false;
-      window.clearInterval(interval);
-    };
-  }, [isAuthenticated, isInitializing]);
+  const markAll = useMutation({
+    mutationFn: markAllNotificationsAsRead,
+    onSuccess: () => {
+      client.setQueryData<Notification[]>(queryKeys.notifications, (current) =>
+        current?.map((n) => ({ ...n, read: true })),
+      );
+    },
+  });
 
   const push = useCallback(
     (n: Omit<Notification, "id" | "timestamp" | "read">) => {
@@ -78,35 +71,31 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
         read: false,
       };
 
-      setNotifications((prev) => [newNotification, ...prev]);
+      client.setQueryData<Notification[]>(queryKeys.notifications, (current) =>
+        current ? [newNotification, ...current] : [newNotification],
+      );
     },
-    [],
+    [client],
   );
 
-  const markRead = useCallback(async (id: string) => {
-    try {
-      const updated = await markNotificationAsRead(id);
+  const markRead = useCallback(
+    (id: string) => {
+      markOne.mutate(id);
+    },
+    [markOne],
+  );
 
-      setNotifications((prev) => prev.map((n) => (n.id === id ? updated : n)));
-    } catch (error: unknown) {
-      console.error("Failed to mark notification as read:", error);
-    }
-  }, []);
+  const markAllRead = useCallback(() => {
+    markAll.mutate();
+  }, [markAll]);
 
-  const markAllRead = useCallback(async () => {
-    try {
-      await markAllNotificationsAsRead();
-
-      setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
-    } catch (error: unknown) {
-      console.error("Failed to mark all notifications as read:", error);
-    }
-  }, []);
+  const value = useMemo(
+    () => ({ notifications, push, markRead, markAllRead }),
+    [notifications, push, markRead, markAllRead],
+  );
 
   return (
-    <NotificationContext.Provider
-      value={{ notifications, push, markRead, markAllRead }}
-    >
+    <NotificationContext.Provider value={value}>
       {children}
     </NotificationContext.Provider>
   );

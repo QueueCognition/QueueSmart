@@ -62,11 +62,6 @@ select:focus {
   outline-offset: 1px;
 }
 
-.field-error {
-  color: #c0392b;
-  font-size: 0.8rem;
-}
-
 .wait-estimate {
   display: flex;
   flex-direction: column;
@@ -91,15 +86,6 @@ select:focus {
 
 .wait-estimate-ahead {
   color: var(--text-muted);
-}
-
-.priority-pill {
-  display: inline-block;
-  padding: 0.15rem 0.6rem;
-  border-radius: 999px;
-  font-size: 0.75rem;
-  background: var(--navy-100);
-  color: var(--navy-700);
 }
 
 .submit-button {
@@ -175,15 +161,15 @@ select:focus {
   flex-shrink: 0;
   padding: 0.4rem 0.85rem;
   background: none;
-  border: 1px solid #c0392b;
+  border: 1px solid var(--danger);
   border-radius: 6px;
-  color: #c0392b;
+  color: var(--danger);
   font-family: inherit;
   font-size: 0.85rem;
   cursor: pointer;
 }
 
 .leave-button:hover {
-  background: #c0392b;
+  background: var(--danger);
   color: white;
 }
