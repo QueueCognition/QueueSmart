@@ -1,50 +1,28 @@
-import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "../context/AuthContext";
-import type { QueueEntry } from "../types/queue";
+import { POLL_INTERVAL_MS, queryKeys } from "../lib/queryClient";
 import { getMyQueue } from "../services/queueService";
+import { describeApiError } from "../services/apiClient";
+import type { QueueEntry } from "../types/queue";
 
 export function useQueueStatus() {
   const { isAuthenticated } = useAuth();
-  const [entry, setEntry] = useState<QueueEntry | null>(null);
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    if (!isAuthenticated) return;
+  const query = useQuery({
+    queryKey: queryKeys.myQueue,
+    queryFn: getMyQueue,
+    enabled: isAuthenticated,
+    refetchInterval: POLL_INTERVAL_MS,
+    refetchIntervalInBackground: false,
+  });
 
-    let active = true;
-    async function refresh() {
-      try {
-        const entries = await getMyQueue();
-        if (active) {
-          setEntry(entries[0] ?? null);
-          setError("");
-          setLoading(false);
-        }
-      } catch (cause) {
-        if (active) {
-          setError(
-            cause instanceof Error
-              ? cause.message
-              : "Failed to load your queue status.",
-          );
-          setLoading(false);
-        }
-      }
-    }
-
-    void refresh();
-    const interval = window.setInterval(() => void refresh(), 5000);
-
-    return () => {
-      active = false;
-      window.clearInterval(interval);
-    };
-  }, [isAuthenticated]);
+  const entry: QueueEntry | null = query.data?.[0] ?? null;
 
   return {
     entry: isAuthenticated ? entry : null,
-    error: isAuthenticated ? error : "",
-    loading: isAuthenticated && loading,
+    error: isAuthenticated
+      ? describeApiError(query.error, "Failed to load your queue status.")
+      : "",
+    loading: isAuthenticated && query.isPending,
   };
 }

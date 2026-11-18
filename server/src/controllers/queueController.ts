@@ -1,17 +1,8 @@
-import type { Request, RequestHandler } from "express";
+import type { RequestHandler } from "express";
 import type { QueueService } from "../services/queueService";
 import { currentUser } from "../utils/currentUser";
-import { HttpError } from "../utils/errors";
+import { routeParam } from "../utils/routeParam";
 import { validateJoinQueueInput } from "../validators/queueValidators";
-
-// With noUncheckedIndexedAccess, route params may be undefined
-function routeParam(req: Request, name: string): string {
-  const value = req.params[name];
-  if (typeof value !== "string" || value.length === 0) {
-    throw new HttpError(400, `Missing route parameter: ${name}`);
-  }
-  return value;
-}
 
 export function createQueueController(queueService: QueueService) {
   // ---------- User routes ----------

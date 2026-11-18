@@ -1,20 +1,15 @@
 import "../styles/auth.css";
 import { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import clsx from "clsx";
 import { useAuth } from "../context/AuthContext";
 import { useNotifications } from "../context/NotificationContext";
 import { AuthError } from "../services/authService";
-
-interface FieldErrors {
-  email?: string;
-  password?: string;
-}
+import { loginSchema, type LoginValues } from "../validation/schemas";
 
 function Login() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [remember, setRemember] = useState(false);
-  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [formError, setFormError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const { login, sessionNotice } = useAuth();
@@ -25,24 +20,24 @@ function Login() {
   const locationState = location.state as { from?: string } | null;
   const redirectTo = locationState?.from ?? "/";
 
-  function validate() {
-    const next: FieldErrors = {};
-    if (!email.trim()) next.email = "Email is required";
-    else if (!/^\S+@\S+\.\S+$/.test(email))
-      next.email = "Enter a valid email address";
-    if (!password) next.password = "Password is required";
-    setFieldErrors(next);
-    return Object.keys(next).length === 0;
-  }
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<LoginValues>({
+    resolver: zodResolver(loginSchema),
+    defaultValues: { email: "", password: "", remember: false },
+  });
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
+  async function onSubmit(values: LoginValues) {
     setFormError("");
-    if (!validate()) return;
-
     setSubmitting(true);
     try {
-      const user = await login({ email: email.trim(), password, remember });
+      const user = await login({
+        email: values.email,
+        password: values.password,
+        remember: values.remember,
+      });
       push({
         message: `Welcome back, ${user.firstName}`,
         type: "status_change",
@@ -81,25 +76,30 @@ function Login() {
           </p>
         )}
 
-        <form className="auth__form" onSubmit={handleSubmit} noValidate>
+        <form
+          className="auth__form"
+          onSubmit={handleSubmit(onSubmit)}
+          noValidate
+        >
           <div className="auth__field">
             <label className="auth__label" htmlFor="email">
               Email
             </label>
             <input
               id="email"
-              className={`auth__input${fieldErrors.email ? " auth__input--invalid" : ""}`}
+              className={clsx("auth__input", {
+                "auth__input--invalid": errors.email,
+              })}
               type="email"
               autoComplete="email"
               placeholder="jamie@example.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              aria-invalid={Boolean(fieldErrors.email)}
-              aria-describedby={fieldErrors.email ? "email-error" : undefined}
+              aria-invalid={Boolean(errors.email)}
+              aria-describedby={errors.email ? "email-error" : undefined}
+              {...register("email")}
             />
-            {fieldErrors.email && (
+            {errors.email && (
               <span className="auth__error" id="email-error">
-                {fieldErrors.email}
+                {errors.email.message}
               </span>
             )}
           </div>
@@ -110,31 +110,26 @@ function Login() {
             </label>
             <input
               id="password"
-              className={`auth__input${fieldErrors.password ? " auth__input--invalid" : ""}`}
+              className={clsx("auth__input", {
+                "auth__input--invalid": errors.password,
+              })}
               type="password"
               autoComplete="current-password"
               placeholder="••••••••"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              aria-invalid={Boolean(fieldErrors.password)}
-              aria-describedby={
-                fieldErrors.password ? "password-error" : undefined
-              }
+              aria-invalid={Boolean(errors.password)}
+              aria-describedby={errors.password ? "password-error" : undefined}
+              {...register("password")}
             />
-            {fieldErrors.password && (
+            {errors.password && (
               <span className="auth__error" id="password-error">
-                {fieldErrors.password}
+                {errors.password.message}
               </span>
             )}
           </div>
 
           <div className="auth__actions">
             <label className="auth__checkbox">
-              <input
-                type="checkbox"
-                checked={remember}
-                onChange={(e) => setRemember(e.target.checked)}
-              />
+              <input type="checkbox" {...register("remember")} />
               <span>Remember me</span>
             </label>
 

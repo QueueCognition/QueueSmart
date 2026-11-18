@@ -15,8 +15,13 @@ import {
 } from "./routes/queueRoutes";
 import { apiRouter } from "./routes";
 
-export function createApp(): express.Express {
+export interface AppOptions {
+  apiPrefix?: string;
+}
+
+export function createApp(options: AppOptions = {}): express.Express {
   const app = express();
+  const apiPrefix = options.apiPrefix ?? config.apiPrefix;
   const serviceService = new ServiceService();
   const queueService = new QueueService(createQueueCatalog(serviceService));
 
@@ -28,14 +33,11 @@ export function createApp(): express.Express {
     res.status(200).json({ status: "ok" });
   });
 
-  app.use("/api/services", createServiceRoutes(serviceService));
-  app.use(`${config.apiPrefix}/queue`, createQueueRoutes(queueService));
-  app.use(
-    `${config.apiPrefix}/admin/queues`,
-    createAdminQueueRoutes(queueService),
-  );
-  app.use(`${config.apiPrefix}/notifications`, createNotificationRoutes());
-  app.use(config.apiPrefix, apiRouter);
+  app.use(`${apiPrefix}/services`, createServiceRoutes(serviceService));
+  app.use(`${apiPrefix}/queue`, createQueueRoutes(queueService));
+  app.use(`${apiPrefix}/admin/queues`, createAdminQueueRoutes(queueService));
+  app.use(`${apiPrefix}/notifications`, createNotificationRoutes());
+  app.use(apiPrefix, apiRouter);
 
   app.use(notFound);
   app.use(errorHandler);

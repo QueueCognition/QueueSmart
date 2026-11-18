@@ -1,124 +1,91 @@
-import { useEffect, useState } from "react";
-import type { FormEvent } from "react";
+import { useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import clsx from "clsx";
 import {
-  getServices,
   createService,
   updateService,
   deleteService,
   setServiceAvailability,
 } from "../services/serviceApi";
-import type { Service, Priority } from "../services/serviceApi";
+import type { Service } from "../services/serviceApi";
+import { useManagedServices } from "../hooks/useServices";
+import { queryKeys } from "../lib/queryClient";
+import { serviceSchema, type ServiceValues } from "../validation/schemas";
 import "../styles/servicemanagement.css";
 
+const DEFAULT_VALUES: ServiceValues = {
+  name: "",
+  description: "",
+  duration: "",
+  priority: "medium",
+};
+
 function ServiceManagement() {
-  const [services, setServices] = useState<Service[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [apiError, setApiError] = useState("");
+  const client = useQueryClient();
+  const servicesQuery = useManagedServices();
+  const services = servicesQuery.data ?? [];
+  const loading = servicesQuery.isPending;
+  const [saveError, setSaveError] = useState("");
   const [saving, setSaving] = useState(false);
-  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
 
-  const [name, setName] = useState("");
-  const [description, setDescription] = useState("");
-  const [duration, setDuration] = useState("");
-  const [priority, setPriority] = useState<Priority>("medium");
-  const [errors, setErrors] = useState<Record<string, string>>({});
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors },
+  } = useForm<ServiceValues>({
+    resolver: zodResolver(serviceSchema),
+    defaultValues: DEFAULT_VALUES,
+  });
 
-  useEffect(() => {
-    let cancelled = false;
+  const apiError =
+    saveError ||
+    (servicesQuery.isError
+      ? servicesQuery.error instanceof Error
+        ? servicesQuery.error.message
+        : "Failed to load services."
+      : "");
 
-    getServices()
-      .then((data) => {
-        if (!cancelled) {
-          setServices(data);
-          setApiError("");
-        }
-      })
-      .catch((error: unknown) => {
-        if (!cancelled) {
-          setApiError(
-            error instanceof Error ? error.message : "Failed to load services.",
-          );
-        }
-      })
-      .finally(() => {
-        if (!cancelled) {
-          setLoading(false);
-        }
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  const refreshServices = () =>
+    Promise.all([
+      client.invalidateQueries({ queryKey: queryKeys.adminServices }),
+      client.invalidateQueries({ queryKey: queryKeys.services }),
+    ]);
 
   const resetForm = () => {
-    setName("");
-    setDescription("");
-    setDuration("");
-    setPriority("medium");
+    reset(DEFAULT_VALUES);
     setEditingId(null);
-    setErrors({});
   };
 
-  const validate = () => {
-    const newErrors: Record<string, string> = {};
-    const parsedDuration = Number(duration);
-
-    if (!name.trim()) {
-      newErrors.name = "Service name is required.";
-    } else if (name.trim().length > 100) {
-      newErrors.name = "Service name must be 100 characters or less.";
-    }
-
-    if (!description.trim()) {
-      newErrors.description = "Description is required.";
-    }
-
-    if (!duration.trim()) {
-      newErrors.duration = "Expected duration is required.";
-    } else if (!Number.isSafeInteger(parsedDuration) || parsedDuration <= 0) {
-      newErrors.duration = "Duration must be a positive whole number.";
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-
-    if (!validate() || saving) {
+  const onSubmit = async (values: ServiceValues) => {
+    if (saving) {
       return;
     }
 
     setSaving(true);
-    setApiError("");
+    setSaveError("");
 
     const serviceData = {
-      name: name.trim(),
-      description: description.trim(),
-      duration: Number(duration),
-      priority,
+      name: values.name,
+      description: values.description,
+      duration: Number(values.duration),
+      priority: values.priority,
     };
 
     try {
       if (editingId !== null) {
-        const updatedService = await updateService(editingId, serviceData);
-
-        setServices((currentServices) =>
-          currentServices.map((service) =>
-            service.id === editingId ? updatedService : service,
-          ),
-        );
+        await updateService(editingId, serviceData);
       } else {
-        const newService = await createService(serviceData);
-
-        setServices((currentServices) => [...currentServices, newService]);
+        await createService(serviceData);
       }
 
+      await refreshServices();
       resetForm();
     } catch (error: unknown) {
-      setApiError(
+      setSaveError(
         error instanceof Error ? error.message : "Failed to save the service.",
       );
     } finally {
@@ -128,12 +95,13 @@ function ServiceManagement() {
 
   const handleEdit = (service: Service) => {
     setEditingId(service.id);
-    setName(service.name);
-    setDescription(service.description);
-    setDuration(String(service.duration));
-    setPriority(service.priority);
-    setErrors({});
-    setApiError("");
+    reset({
+      name: service.name,
+      description: service.description,
+      duration: String(service.duration),
+      priority: service.priority,
+    });
+    setSaveError("");
   };
 
   const handleToggleAvailability = async (service: Service) => {
@@ -142,21 +110,13 @@ function ServiceManagement() {
     }
 
     setSaving(true);
-    setApiError("");
+    setSaveError("");
 
     try {
-      const updated = await setServiceAvailability(
-        service.id,
-        !service.isAvailable,
-      );
-
-      setServices((currentServices) =>
-        currentServices.map((item) =>
-          item.id === updated.id ? updated : item,
-        ),
-      );
+      await setServiceAvailability(service.id, !service.isAvailable);
+      await refreshServices();
     } catch (error: unknown) {
-      setApiError(
+      setSaveError(
         error instanceof Error
           ? error.message
           : "Failed to update the service availability.",
@@ -166,7 +126,7 @@ function ServiceManagement() {
     }
   };
 
-  const handleRemove = async (id: number) => {
+  const handleRemove = async (id: string) => {
     if (saving) {
       return;
     }
@@ -180,20 +140,18 @@ function ServiceManagement() {
     }
 
     setSaving(true);
-    setApiError("");
+    setSaveError("");
 
     try {
       await deleteService(id);
 
-      setServices((currentServices) =>
-        currentServices.filter((service) => service.id !== id),
-      );
+      await refreshServices();
 
       if (editingId === id) {
         resetForm();
       }
     } catch (error: unknown) {
-      setApiError(
+      setSaveError(
         error instanceof Error
           ? error.message
           : "Failed to remove the service.",
@@ -219,24 +177,25 @@ function ServiceManagement() {
       <section className="service-card">
         <h2>{editingId !== null ? "Edit Service" : "Create New Service"}</h2>
 
-        <form onSubmit={handleSubmit} className="service-form">
+        <form onSubmit={handleSubmit(onSubmit)} className="service-form">
           <div className="service-field">
             <label htmlFor="service-name">Service Name</label>
             <input
               id="service-name"
               type="text"
-              value={name}
               maxLength={100}
-              onChange={(event) => setName(event.target.value)}
               placeholder="Enter service name"
-              className={
-                errors.name
-                  ? "service-input service-input--error"
-                  : "service-input"
-              }
+              className={clsx("service-input", {
+                "service-input--error": errors.name,
+              })}
+              aria-invalid={Boolean(errors.name)}
+              aria-describedby={errors.name ? "service-name-error" : undefined}
+              {...register("name")}
             />
             {errors.name && (
-              <span className="service-error">{errors.name}</span>
+              <span className="service-error" id="service-name-error">
+                {errors.name.message}
+              </span>
             )}
           </div>
 
@@ -244,18 +203,21 @@ function ServiceManagement() {
             <label htmlFor="service-description">Description</label>
             <textarea
               id="service-description"
-              value={description}
-              onChange={(event) => setDescription(event.target.value)}
               placeholder="Describe the service"
               rows={4}
-              className={
-                errors.description
-                  ? "service-input service-input--error"
-                  : "service-input"
+              className={clsx("service-input", {
+                "service-input--error": errors.description,
+              })}
+              aria-invalid={Boolean(errors.description)}
+              aria-describedby={
+                errors.description ? "service-description-error" : undefined
               }
+              {...register("description")}
             />
             {errors.description && (
-              <span className="service-error">{errors.description}</span>
+              <span className="service-error" id="service-description-error">
+                {errors.description.message}
+              </span>
             )}
           </div>
 
@@ -269,17 +231,20 @@ function ServiceManagement() {
                 type="number"
                 min="1"
                 step="1"
-                value={duration}
-                onChange={(event) => setDuration(event.target.value)}
                 placeholder="e.g. 30"
-                className={
-                  errors.duration
-                    ? "service-input service-input--error"
-                    : "service-input"
+                className={clsx("service-input", {
+                  "service-input--error": errors.duration,
+                })}
+                aria-invalid={Boolean(errors.duration)}
+                aria-describedby={
+                  errors.duration ? "service-duration-error" : undefined
                 }
+                {...register("duration")}
               />
               {errors.duration && (
-                <span className="service-error">{errors.duration}</span>
+                <span className="service-error" id="service-duration-error">
+                  {errors.duration.message}
+                </span>
               )}
             </div>
 
@@ -287,11 +252,8 @@ function ServiceManagement() {
               <label htmlFor="service-priority">Priority Level</label>
               <select
                 id="service-priority"
-                value={priority}
-                onChange={(event) =>
-                  setPriority(event.target.value as Priority)
-                }
                 className="service-input"
+                {...register("priority")}
               >
                 <option value="low">Low</option>
                 <option value="medium">Medium</option>

@@ -1,15 +1,15 @@
 import "../styles/joinqueue.css";
-import { useEffect, useState } from "react";
-import type { QueueEntry, Service } from "../types/queue";
-import {
-  getMyQueue,
-  getServices,
-  getWaitEstimate,
-  joinQueue,
-  leaveQueue,
-} from "../services/queueService";
-import type { WaitEstimate } from "../types/queue";
+import { useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useForm, useWatch } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import type { QueueEntry } from "../types/queue";
+import { getMyQueue, joinQueue, leaveQueue } from "../services/queueService";
+import { describeApiError } from "../services/apiClient";
 import { useAuth } from "../context/AuthContext";
+import { useServices, useWaitEstimate } from "../hooks/useServices";
+import { queryKeys } from "../lib/queryClient";
+import { joinQueueSchema, type JoinQueueValues } from "../validation/schemas";
 import { Link } from "react-router-dom";
 
 const TIME_SLOTS = [
@@ -23,111 +23,69 @@ const TIME_SLOTS = [
   "2:00 PM",
 ];
 
+const DEFAULT_VALUES: JoinQueueValues = {
+  serviceId: "",
+  date: "",
+  timeSlot: "",
+  fullName: "",
+  email: "",
+};
+
 function JoinQueue() {
-  const [services, setServices] = useState<Service[]>([]);
-  const [serviceId, setServiceId] = useState("");
-  const [date, setDate] = useState("");
-  const [timeSlot, setTimeSlot] = useState("");
-  const [fullName, setFullName] = useState("");
-  const [email, setEmail] = useState("");
-  const [errors, setErrors] = useState<Record<string, string>>({});
+  const servicesQuery = useServices();
+  const services = servicesQuery.data ?? [];
   const [formError, setFormError] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [myQueue, setMyQueue] = useState<QueueEntry[]>([]);
-  const [waitEstimate, setWaitEstimate] = useState<WaitEstimate | null>(null);
   const { isAuthenticated } = useAuth();
+  const client = useQueryClient();
 
-  useEffect(() => {
-    let active = true;
-    getServices()
-      .then((data) => {
-        if (active) setServices(data);
-      })
-      .catch((error: unknown) => {
-        if (active) {
-          setFormError(
-            error instanceof Error ? error.message : "Failed to load services.",
-          );
-        }
-      });
-    return () => {
-      active = false;
-    };
-  }, []);
+  const {
+    register,
+    handleSubmit,
+    resetField,
+    control,
+    formState: { errors },
+  } = useForm<JoinQueueValues>({
+    resolver: zodResolver(joinQueueSchema),
+    defaultValues: DEFAULT_VALUES,
+  });
 
-  useEffect(() => {
-    if (!isAuthenticated) return;
+  const serviceId = useWatch({ control, name: "serviceId" });
 
-    let active = true;
-    getMyQueue()
-      .then((entries) => {
-        if (active) setMyQueue(entries);
-      })
-      .catch((error: unknown) => {
-        if (active) {
-          setFormError(
-            error instanceof Error
-              ? error.message
-              : "Failed to load your queue.",
-          );
-        }
-      });
-    return () => {
-      active = false;
-    };
-  }, [isAuthenticated]);
+  const myQueueQuery = useQuery({
+    queryKey: queryKeys.myQueue,
+    queryFn: getMyQueue,
+    enabled: isAuthenticated,
+  });
+  const myQueue = myQueueQuery.data ?? [];
+
+  const waitEstimateQuery = useWaitEstimate(serviceId || undefined);
+  const waitEstimate = waitEstimateQuery.data ?? null;
 
   const selectedService = services.find((s) => s.id === serviceId);
 
-  useEffect(() => {
-    if (!serviceId) return;
+  const loadError =
+    (servicesQuery.isError &&
+      describeApiError(servicesQuery.error, "Failed to load services.")) ||
+    (myQueueQuery.isError &&
+      describeApiError(myQueueQuery.error, "Failed to load your queue.")) ||
+    (waitEstimateQuery.isError &&
+      describeApiError(
+        waitEstimateQuery.error,
+        "Failed to load the wait estimate.",
+      )) ||
+    "";
 
-    let active = true;
-    getWaitEstimate(serviceId)
-      .then((estimate) => {
-        if (active) setWaitEstimate(estimate);
-      })
-      .catch((error: unknown) => {
-        if (active) {
-          setWaitEstimate(null);
-          setFormError(
-            error instanceof Error
-              ? error.message
-              : "Failed to load the wait estimate.",
-          );
-        }
-      });
-    return () => {
-      active = false;
-    };
-  }, [serviceId]);
+  async function onSubmit(values: JoinQueueValues) {
+    const service = services.find((item) => item.id === values.serviceId);
+    if (!service) return;
 
-  function validate() {
-    const next: Record<string, string> = {};
-    if (!serviceId) next.serviceId = "Please select a service";
-    if (!date) next.date = "Please select a date";
-    if (!timeSlot) next.timeSlot = "Please select a time slot";
-    if (!fullName.trim()) next.fullName = "Full name is required";
-    else if (fullName.trim().length > 100)
-      next.fullName = "Name must be 100 characters or fewer";
-    if (!email.trim()) next.email = "Email is required";
-    else if (!/^\S+@\S+\.\S+$/.test(email))
-      next.email = "Enter a valid email address";
-    else if (email.trim().length > 254)
-      next.email = "Email must be 254 characters or fewer";
-    setErrors(next);
-    return Object.keys(next).length === 0;
-  }
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!validate() || !selectedService) return;
     if (!isAuthenticated) {
       setFormError("Sign in before joining the queue.");
       return;
     }
 
-    if (!selectedService.isAvailable) {
+    if (!service.isAvailable) {
       setFormError("This service is not accepting new entries right now.");
       return;
     }
@@ -135,21 +93,19 @@ function JoinQueue() {
     setFormError("");
     setSubmitting(true);
     try {
-      const entry = await joinQueue({
-        serviceId,
-        fullName,
-        email,
-        date,
-        timeSlot,
+      await joinQueue({
+        serviceId: values.serviceId,
+        fullName: values.fullName,
+        email: values.email,
+        date: values.date,
+        timeSlot: values.timeSlot,
       });
-      setMyQueue((current) => [...current, entry]);
-      setServiceId("");
-      setDate("");
-      setTimeSlot("");
+      await client.invalidateQueries({ queryKey: queryKeys.myQueue });
+      resetField("serviceId");
+      resetField("date");
+      resetField("timeSlot");
     } catch (error) {
-      setFormError(
-        error instanceof Error ? error.message : "Failed to join the queue.",
-      );
+      setFormError(describeApiError(error, "Failed to join the queue."));
     } finally {
       setSubmitting(false);
     }
@@ -163,14 +119,11 @@ function JoinQueue() {
     setFormError("");
     try {
       await leaveQueue(entry.id);
-      setMyQueue((current) => current.filter((item) => item.id !== entry.id));
+      await client.invalidateQueries({ queryKey: queryKeys.myQueue });
     } catch (error) {
-      setFormError(
-        error instanceof Error ? error.message : "Failed to leave the queue.",
-      );
+      setFormError(describeApiError(error, "Failed to leave the queue."));
     }
   }
-
   return (
     <div className="join-queue-page">
       <div className="appointment-card">
@@ -179,13 +132,14 @@ function JoinQueue() {
           Select a service and preferred time to join the queue
         </p>
 
-        <form onSubmit={handleSubmit} noValidate>
+        <form onSubmit={handleSubmit(onSubmit)} noValidate>
           <div className="form-group">
             <label htmlFor="service">Service</label>
             <select
               id="service"
-              value={serviceId}
-              onChange={(e) => setServiceId(e.target.value)}
+              aria-invalid={Boolean(errors.serviceId)}
+              aria-describedby={errors.serviceId ? "service-error" : undefined}
+              {...register("serviceId")}
             >
               <option value="">Select a service...</option>
               {services.map((s) => (
@@ -196,7 +150,9 @@ function JoinQueue() {
               ))}
             </select>
             {errors.serviceId && (
-              <span className="field-error">{errors.serviceId}</span>
+              <span className="field-error" id="service-error">
+                {errors.serviceId.message}
+              </span>
             )}
           </div>
 
@@ -233,11 +189,14 @@ function JoinQueue() {
               <input
                 id="date"
                 type="date"
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
+                aria-invalid={Boolean(errors.date)}
+                aria-describedby={errors.date ? "date-error" : undefined}
+                {...register("date")}
               />
               {errors.date && (
-                <span className="field-error">{errors.date}</span>
+                <span className="field-error" id="date-error">
+                  {errors.date.message}
+                </span>
               )}
             </div>
 
@@ -245,8 +204,11 @@ function JoinQueue() {
               <label htmlFor="timeSlot">Preferred Time</label>
               <select
                 id="timeSlot"
-                value={timeSlot}
-                onChange={(e) => setTimeSlot(e.target.value)}
+                aria-invalid={Boolean(errors.timeSlot)}
+                aria-describedby={
+                  errors.timeSlot ? "timeSlot-error" : undefined
+                }
+                {...register("timeSlot")}
               >
                 <option value="">Select a time...</option>
                 {TIME_SLOTS.map((t) => (
@@ -256,7 +218,9 @@ function JoinQueue() {
                 ))}
               </select>
               {errors.timeSlot && (
-                <span className="field-error">{errors.timeSlot}</span>
+                <span className="field-error" id="timeSlot-error">
+                  {errors.timeSlot.message}
+                </span>
               )}
             </div>
           </div>
@@ -267,12 +231,15 @@ function JoinQueue() {
               id="fullName"
               type="text"
               maxLength={100}
-              value={fullName}
-              onChange={(e) => setFullName(e.target.value)}
               placeholder="Jamie Win"
+              aria-invalid={Boolean(errors.fullName)}
+              aria-describedby={errors.fullName ? "fullName-error" : undefined}
+              {...register("fullName")}
             />
             {errors.fullName && (
-              <span className="field-error">{errors.fullName}</span>
+              <span className="field-error" id="fullName-error">
+                {errors.fullName.message}
+              </span>
             )}
           </div>
 
@@ -281,18 +248,22 @@ function JoinQueue() {
             <input
               id="email"
               type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
               placeholder="jamie@example.com"
+              aria-invalid={Boolean(errors.email)}
+              aria-describedby={errors.email ? "email-error" : undefined}
+              {...register("email")}
             />
             {errors.email && (
-              <span className="field-error">{errors.email}</span>
+              <span className="field-error" id="email-error">
+                {errors.email.message}
+              </span>
             )}
           </div>
 
-          {formError && (
+          {(formError || loadError) && (
             <p className="field-error" role="alert">
-              {formError} {!isAuthenticated && <Link to="/login">Sign in</Link>}
+              {formError || loadError}{" "}
+              {!isAuthenticated && <Link to="/login">Sign in</Link>}
             </p>
           )}
 
